@@ -1,0 +1,12 @@
+.git
+venv
+__pycache__
+.pytest_cache
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.log
+*.swp
+*.swo
+.env
