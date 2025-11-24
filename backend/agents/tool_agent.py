@@ -28,7 +28,22 @@ class ToolAgent:
         intent_guidance = {
             "classement_ligue": "Utilise le tool standings avec league_id et season (convertis le nom de ligue via le mapping).",
             "prochain_match_equipe": "Utilise search_team puis team_next_fixtures (count=1 par defaut).",
-            "calendrier_matchs": "Utilise fixtures_by_date ou team_next_fixtures selon les entites.",
+            "calendrier_matchs": (
+                "Resous league -> league_id meme pour '1ere division <pays>'. "
+                "Si date absente, prends aujourd'hui; season par defaut = saison en cours. "
+                "Appelle fixtures_by_date avec league_id/date/season/status quand dispo."
+            ),
+            "analyse_rencontre": (
+                "Resous les deux equipes via search_team. Si fixture_id absent, identifie la prochaine rencontre a venir "
+                "(fixtures_by_date ou team_next_fixtures). Ensuite appelle predictions, head_to_head et odds_by_fixture."
+            ),
+            "stats_equipe_saison": (
+                "Resous team -> team_id via search_team puis appelle team_statistics avec league_id + season (defaut saison actuelle)."
+            ),
+            "stats_joueur": (
+                "Utilise search_player pour obtenir player_id; season par defaut = saison en cours. "
+                "Le tool search_player suffit pour les stats globales."
+            ),
             "top_performers": "Utilise top_scorers ou top_assists selon la demande.",
         }
 
