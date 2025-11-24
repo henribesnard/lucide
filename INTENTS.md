@@ -8,6 +8,25 @@ Ce document résume les intentions actuellement gérées par le backend et les e
 - Mapping ligues : Ligue 1=61, Premier League=39, La Liga=140, Bundesliga=78, Serie A=135, Ligue des Champions=2, Europa League=3 (compléter selon besoin).
 - Séquence standard : détection intent/entités → tool(s) appropriés → analyse → réponse finale (rappel : ne jamais garantir un résultat de match).
 
+## Intentions prioritaires (Doc développeur v1)
+Ces règles s’appliquent en priorité pour les quatre premières intentions.
+
+- `calendrier_matchs`
+  - Entités : `date` (défaut = aujourd’hui), `league`/`league_id` (mapping {pays + division} pour les ligues floues), `season` (défaut saison en cours), `status` (NS/FT/LIVE).
+  - Flow : si ligue ambiguë → demander clarification ; sinon appeler `fixtures_by_date` avec date + league_id + season (+ status si fourni).
+
+- `analyse_rencontre`
+  - Entités : deux `teams` (résolues via `search_team`), `fixture_id` si connu, `league`/`date`/`season` optionnels.
+  - Flow : identifier la prochaine fixture à venir (via `fixtures_by_date` ou `team_next_fixtures`) puis chaîner `predictions`, `head_to_head`, `odds_by_fixture`.
+
+- `stats_equipe_saison`
+  - Entités : `team` → `team_id` (via `search_team`), `league`/`league_id` optionnel, `season` (défaut saison en cours), `depth` non exploité pour l’instant.
+  - Flow : appeler `team_statistics` avec `team_id`, `league_id`, `season`.
+
+- `stats_joueur`
+  - Entités : `player` → `player_id` (via `search_player`), `team` en cas d’ambiguïté, `season` (défaut saison active), `depth` non exploité.
+  - Flow : `search_player` suffit pour récupérer les statistiques globales.
+
 ## Intentions et tools attendus
 
 ### 1) `calendrier_matchs`
