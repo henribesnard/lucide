@@ -1,0 +1,42 @@
+// Get one venue from venue {id}
+get("https://v3.football.api-sports.io/venues?id=556");
+
+// Get one venue from venue {name}
+get("https://v3.football.api-sports.io/venues?name=Old Trafford");
+
+// Get all venues from {city}
+get("https://v3.football.api-sports.io/venues?city=manchester");
+
+// Get venues from {country}
+get("https://v3.football.api-sports.io/venues?country=england");
+
+// Allows you to search for a venues in relation to a venue {name}, {city} or {country}
+get("https://v3.football.api-sports.io/venues?search=trafford");
+get("https://v3.football.api-sports.io/venues?search=manches");
+get("https://v3.football.api-sports.io/venues?search=England");
+
+
+{
+  "get": "venues",
+  "parameters": {
+    "id": "556"
+  },
+  "errors": [],
+  "results": 1,
+  "paging": {
+    "current": 1,
+    "total": 1
+  },
+  "response": [
+    {
+      "id": 556,
+      "name": "Old Trafford",
+      "address": "Sir Matt Busby Way",
+      "city": "Manchester",
+      "country": "England",
+      "capacity": 76212,
+      "surface": "grass",
+      "image": "https://media.api-sports.io/football/venues/556.png"
+    }
+  ]
+}

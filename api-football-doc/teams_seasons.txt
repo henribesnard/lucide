@@ -1,0 +1,30 @@
+// Get all seasons available for a team from one team {id}
+get("https://v3.football.api-sports.io/teams/seasons?team=33");
+
+
+{
+  "get": "teams/seasons",
+  "parameters": {
+    "team": "33"
+  },
+  "errors": [],
+  "results": 1,
+  "paging": {
+    "current": 1,
+    "total": 1
+  },
+  "response": [
+    2010,
+    2011,
+    2012,
+    2013,
+    2014,
+    2015,
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021
+  ]
+}

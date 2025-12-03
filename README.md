@@ -31,9 +31,21 @@ LOG_LEVEL=INFO
 uvicorn backend.main:app --reload
 ```
 
+## Lancer via Docker
+
+```bash
+# Assure-toi d'avoir un .env avec les clés LLM et API-Football
+docker compose up --build
+# L'API sera disponible sur http://localhost:5000
+```
+
 Endpoints utiles :
 - `GET /health` : verifie la configuration LLM
 - `POST /chat` : payload `{ "message": "...", "session_id": "optionnel" }`
+
+## Frontend (statique)
+- Ouvre `frontend/index.html` dans un navigateur (le frontend cible `http://localhost:5000/chat` par défaut).
+- Le frontend est responsive et peut être packagé en webview (Android/iOS). Il maintient la `session_id` en localStorage et affiche l’intention, les tools et les entités renvoyées par l’API.
 
 La reponse du `/chat` expose aussi l'intention detectee, les entites extraites et les tools utilises (pour debug).
 

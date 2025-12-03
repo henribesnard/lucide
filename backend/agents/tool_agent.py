@@ -31,7 +31,7 @@ class ToolAgent:
             "calendrier_matchs": (
                 "Resous league -> league_id meme pour '1ere division <pays>'. "
                 "Si date absente, prends aujourd'hui; season par defaut = saison en cours. "
-                "Appelle fixtures_by_date avec league_id/date/season/status quand dispo."
+                "Appelle fixtures_by_date ou fixtures_search avec league_id/date/season/status quand dispo."
             ),
             "analyse_rencontre": (
                 "Resous les deux equipes via search_team. Si fixture_id absent, identifie la prochaine rencontre a venir "
@@ -45,6 +45,34 @@ class ToolAgent:
                 "Le tool search_player suffit pour les stats globales."
             ),
             "top_performers": "Utilise top_scorers ou top_assists selon la demande.",
+            "top_cartons": "Utilise top_yellow_cards ou top_red_cards selon jaunes/rouges.",
+            "calendrier_ligue_saison": "Utilise fixtures_search avec league_id + season (+ from/to/round/status/timezone si fourni).",
+            "calendrier_equipe": "Utilise search_team puis fixtures_search avec team_id (+ season/from/to/status/timezone).",
+            "matchs_live_filtre": "Utilise fixtures_search avec live='all' et filtres league_id ou team_id si donnes.",
+            "prochains_ou_derniers_matchs": "Utilise fixtures_search avec next ou last (plus league_id/team_id si dispo).",
+            "detail_fixture": "Si fixture_id fourni, utilises fixture_events/fixture_lineups/fixture_statistics/fixture_players selon besoin.",
+            "chronologie_match": "fixture_events avec fixture_id (filtres team_id/player_id/type si fournis).",
+            "compositions_match": "fixture_lineups avec fixture_id (team_id optionnel).",
+            "stats_equipes_match": "fixture_statistics avec fixture_id (team_id optionnel).",
+            "stats_joueurs_match": "fixture_players avec fixture_id (team_id optionnel).",
+            "journees_competition": "fixture_rounds avec league_id et season (current=true si demande de journee actuelle).",
+            "referentiel_pays": "Appelle countries avec filtres name/code/search si fournis.",
+            "referentiel_ligues": "Appelle leagues avec filtres id/name/country/code/type/current/season/search/last.",
+            "saisons_disponibles": "Appelle league_seasons.",
+            "timezones_disponibles": "Appelle timezones.",
+            "info_equipe": "Utilise teams (ou search_team) avec league/season/country/code/venue/search.",
+            "saisons_equipe": "team_seasons avec team_id (resoudre via search_team si nom).",
+            "effectif_equipe": "players_squads avec team_id (resoudre via search_team).",
+            "equipes_dun_joueur": "players_squads avec player_id (resoudre via search_player).",
+            "profil_joueur": "player_profile avec player_id ou search.",
+            "stats_joueur_saison_detail": "player_statistics avec player_id ou player_name + season (+league/team).",
+            "parcours_equipes_joueur": "players_squads avec player_id pour obtenir ses equipes (ou player_teams si disponible).",
+            "blessures_precises": "injuries avec league_id/season/fixture_id/team_id/player_id/date/timezone.",
+            "indisponibilites_historiques": "sidelined avec player_id ou coach_id.",
+            "transferts": "transfers avec player_id ou team_id.",
+            "palmares": "trophies avec player_id ou coach_id.",
+            "coach_info": "coaches avec coach_id/team_id/search.",
+            "stade_info": "venues avec venue_id/name/city/country/search.",
         }
 
         messages = [

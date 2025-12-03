@@ -6,6 +6,34 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+MATCH_STATUS_CODES = [
+    "TBD",
+    "NS",
+    "1H",
+    "HT",
+    "2H",
+    "ET",
+    "BT",
+    "P",
+    "SUSP",
+    "INT",
+    "FT",
+    "AET",
+    "PEN",
+    "PST",
+    "CANC",
+    "ABD",
+    "AWD",
+    "WO",
+    "LIVE",
+]
+
+
+
+def is_valid_status(status: str) -> bool:
+    return status.upper() in MATCH_STATUS_CODES
+
+
 class FootballAPIClient:
     """
     Client complet pour l'API Football v3
@@ -19,9 +47,14 @@ class FootballAPIClient:
             "x-apisports-key": api_key,
         }
         self.client = httpx.AsyncClient(timeout=30.0)
+        # Small caches for low-churn referentials to reduce repeated calls
+        self._cache_timezones: Optional[List[str]] = None
+        self._cache_seasons: Optional[List[int]] = None
+        self._cache_countries: Dict[str, List[Dict[str, Any]]] = {}
+        self._cache_team_countries: Optional[List[Dict[str, Any]]] = None
 
     async def _make_request(self, endpoint: str, params: Dict = None) -> Dict:
-        """Effectue une requête à l'API et retourne la réponse"""
+        """Perform an HTTP request to API-Football and return the parsed payload."""
         try:
             url = f"{self.base_url}/{endpoint}"
             logger.info(f"API Request: {endpoint} with params: {params}")
@@ -45,58 +78,80 @@ class FootballAPIClient:
     # TIMEZONE
     # ==========================================
     async def get_timezones(self) -> List[str]:
-        """Récupère la liste de tous les timezones disponibles"""
+        """Return all available timezones."""
+        if hasattr(self, "_cache_timezones") and self._cache_timezones is not None:
+            return self._cache_timezones
         data = await self._make_request("timezone")
-        return data.get("response", [])
+        self._cache_timezones = data.get("response", [])
+        return self._cache_timezones
 
     # ==========================================
     # SEASONS
     # ==========================================
     async def get_seasons(self) -> List[int]:
-        """Récupère la liste de toutes les saisons disponibles"""
+        """Return all available seasons."""
+        if hasattr(self, "_cache_seasons") and self._cache_seasons is not None:
+            return self._cache_seasons
         data = await self._make_request("seasons")
-        return data.get("response", [])
+        self._cache_seasons = data.get("response", [])
+        return self._cache_seasons
 
     # ==========================================
     # COUNTRIES
     # ==========================================
-    async def get_countries(self, name: Optional[str] = None, code: Optional[str] = None) -> List[Dict]:
-        """
-        Récupère la liste des pays
-
-        Args:
-            name: Nom du pays (ex: "France")
-            code: Code du pays (ex: "FR")
-        """
+    async def get_countries(
+        self, name: Optional[str] = None, code: Optional[str] = None, search: Optional[str] = None
+    ) -> List[Dict]:
+        """Return the list of countries."""
         params = {}
         if name:
             params["name"] = name
         if code:
             params["code"] = code
+        if search:
+            params["search"] = search
+
+        cache_key = f"{name or ''}|{code or ''}|{search or ''}"
+        if hasattr(self, "_cache_countries") and cache_key in self._cache_countries:
+            return self._cache_countries[cache_key]
 
         data = await self._make_request("countries", params)
-        return data.get("response", [])
+        response = data.get("response", [])
+        if hasattr(self, "_cache_countries"):
+            self._cache_countries[cache_key] = response
+        return response
 
     # ==========================================
     # LEAGUES
     # ==========================================
+
     async def get_leagues(
         self,
         league_id: Optional[int] = None,
         name: Optional[str] = None,
         country: Optional[str] = None,
         season: Optional[int] = None,
-        team_id: Optional[int] = None
+        team_id: Optional[int] = None,
+        code: Optional[str] = None,
+        type_: Optional[str] = None,
+        current: Optional[bool] = None,
+        search: Optional[str] = None,
+        last: Optional[int] = None,
     ) -> List[Dict]:
         """
-        Récupère les informations des ligues
+        Recupere les informations des ligues.
 
         Args:
             league_id: ID de la ligue
             name: Nom de la ligue
             country: Pays de la ligue
             season: Saison
-            team_id: ID de l'équipe
+            team_id: ID de l'equipe
+            code: Code pays (ex: GB)
+            type_: Type de competition (league/cup)
+            current: Saison en cours uniquement
+            search: Texte de recherche
+            last: Dernieres ligues ajoutees (nb)
         """
         params = {}
         if league_id:
@@ -109,13 +164,25 @@ class FootballAPIClient:
             params["season"] = season
         if team_id:
             params["team"] = team_id
+        if code:
+            params["code"] = code
+        if type_:
+            params["type"] = type_
+        if current is not None:
+            params["current"] = "true" if current else "false"
+        if search:
+            params["search"] = search
+        if last:
+            params["last"] = last
 
         data = await self._make_request("leagues", params)
         return data.get("response", [])
 
+
     # ==========================================
     # TEAMS
     # ==========================================
+
     async def get_teams(
         self,
         team_id: Optional[int] = None,
@@ -123,17 +190,21 @@ class FootballAPIClient:
         league_id: Optional[int] = None,
         season: Optional[int] = None,
         country: Optional[str] = None,
+        code: Optional[str] = None,
+        venue_id: Optional[int] = None,
         search: Optional[str] = None
     ) -> List[Dict]:
         """
-        Récupère les informations des équipes
+        Recupere les informations des equipes.
 
         Args:
-            team_id: ID de l'équipe
-            name: Nom de l'équipe
+            team_id: ID de l'equipe
+            name: Nom de l'equipe
             league_id: ID de la ligue
             season: Saison
             country: Pays
+            code: Code equipe (ex: PSG)
+            venue_id: ID du stade
             search: Recherche textuelle
         """
         params = {}
@@ -147,11 +218,16 @@ class FootballAPIClient:
             params["season"] = season
         if country:
             params["country"] = country
+        if code:
+            params["code"] = code
+        if venue_id:
+            params["venue"] = venue_id
         if search:
             params["search"] = search
 
         data = await self._make_request("teams", params)
         return data.get("response", [])
+
 
     async def get_team_statistics(
         self,
@@ -161,13 +237,13 @@ class FootballAPIClient:
         date: Optional[str] = None
     ) -> Dict:
         """
-        Récupère les statistiques détaillées d'une équipe
+        Return detailed team statistics for a season and league.
 
         Args:
-            team_id: ID de l'équipe
+            team_id: ID of the team
             season: Saison
             league_id: ID de la ligue
-            date: Date spécifique (YYYY-MM-DD)
+            date: Specific date (YYYY-MM-DD)
         """
         params = {
             "team": team_id,
@@ -181,15 +257,18 @@ class FootballAPIClient:
         return data.get("response", {})
 
     async def get_team_seasons(self, team_id: int) -> List[int]:
-        """Récupère les saisons disponibles pour une équipe"""
+        """List available seasons for a team."""
         params = {"team": team_id}
         data = await self._make_request("teams/seasons", params)
         return data.get("response", [])
 
     async def get_team_countries(self) -> List[Dict]:
-        """Récupère la liste des pays avec des équipes disponibles"""
+        """List countries that have teams available."""
+        if hasattr(self, "_cache_team_countries") and self._cache_team_countries is not None:
+            return self._cache_team_countries
         data = await self._make_request("teams/countries")
-        return data.get("response", [])
+        self._cache_team_countries = data.get("response", [])
+        return self._cache_team_countries
 
     # ==========================================
     # VENUES (STADES)
@@ -203,7 +282,7 @@ class FootballAPIClient:
         search: Optional[str] = None
     ) -> List[Dict]:
         """
-        Récupère les informations des stades
+        Return venue information.
 
         Args:
             venue_id: ID du stade
@@ -237,12 +316,12 @@ class FootballAPIClient:
         team_id: Optional[int] = None
     ) -> List[Dict]:
         """
-        Récupère les classements
+        Return standings.
 
         Args:
             season: Saison
             league_id: ID de la ligue
-            team_id: ID de l'équipe
+            team_id: ID of the team
         """
         params = {"season": season}
         if league_id:
@@ -274,23 +353,23 @@ class FootballAPIClient:
         next: Optional[int] = None
     ) -> List[Dict]:
         """
-        Récupère les matchs (fixtures)
+        Return fixtures (matches).
 
         Args:
             fixture_id: ID du match
             league_id: ID de la ligue
             season: Saison
-            team_id: ID de l'équipe
+            team_id: ID of the team
             date: Date (YYYY-MM-DD)
-            from_date: Date de début
+            from_date: Start date
             to_date: Date de fin
-            round_: Tour/Journée
+            round_: Round/Matchday
             status: Statut (TBD, NS, 1H, HT, 2H, ET, P, FT, AET, PEN, BT, SUSP, INT, PST, CANC, ABD, AWD, WO, LIVE)
             venue_id: ID du stade
             timezone: Timezone
             live: "all" pour tous les matchs en direct
-            last: N derniers matchs d'une équipe
-            next: N prochains matchs d'une équipe
+            last: Last N fixtures for a team
+            next: Next N fixtures for a team
         """
         params = {}
         if fixture_id:
@@ -327,12 +406,12 @@ class FootballAPIClient:
 
     async def get_fixture_rounds(self, league_id: int, season: int, current: bool = False) -> List[str]:
         """
-        Récupère les journées/tours d'une ligue
+        Return rounds for a league.
 
         Args:
             league_id: ID de la ligue
             season: Saison
-            current: True pour obtenir seulement la journée actuelle
+            current: True to return only the current round
         """
         params = {
             "league": league_id,
@@ -358,13 +437,13 @@ class FootballAPIClient:
         timezone: Optional[str] = None
     ) -> List[Dict]:
         """
-        Récupère l'historique des confrontations directes (H2H)
+        Return head-to-head fixtures between two teams (H2H).
 
         Args:
-            team1_id: ID de l'équipe 1
-            team2_id: ID de l'équipe 2
+            team1_id: ID of the first team
+            team2_id: ID of the second team
             last: Nombre de derniers matchs
-            from_date: Date de début
+            from_date: Start date
             to_date: Date de fin
             league_id: ID de la ligue
             season: Saison
@@ -395,11 +474,11 @@ class FootballAPIClient:
 
     async def get_fixture_statistics(self, fixture_id: int, team_id: Optional[int] = None) -> List[Dict]:
         """
-        Récupère les statistiques d'un match
+        Return statistics for a fixture.
 
         Args:
             fixture_id: ID du match
-            team_id: ID de l'équipe (optionnel)
+            team_id: ID of the team (optional)
         """
         params = {"fixture": fixture_id}
         if team_id:
@@ -416,13 +495,13 @@ class FootballAPIClient:
         type_: Optional[str] = None
     ) -> List[Dict]:
         """
-        Récupère les événements d'un match (buts, cartons, etc.)
+        Return events for a fixture (goals, cards, etc.).
 
         Args:
             fixture_id: ID du match
-            team_id: ID de l'équipe
+            team_id: ID of the team
             player_id: ID du joueur
-            type_: Type d'événement (Goal, Card, subst, Var)
+            type_: Event type (Goal, Card, subst, Var)
         """
         params = {"fixture": fixture_id}
         if team_id:
@@ -437,11 +516,11 @@ class FootballAPIClient:
 
     async def get_fixture_lineups(self, fixture_id: int, team_id: Optional[int] = None) -> List[Dict]:
         """
-        Récupère les compositions d'équipe pour un match
+        Return lineups for a fixture.
 
         Args:
             fixture_id: ID du match
-            team_id: ID de l'équipe (optionnel)
+            team_id: ID of the team (optional)
         """
         params = {"fixture": fixture_id}
         if team_id:
@@ -452,11 +531,11 @@ class FootballAPIClient:
 
     async def get_fixture_player_statistics(self, fixture_id: int, team_id: Optional[int] = None) -> List[Dict]:
         """
-        Récupère les statistiques des joueurs pour un match
+        Return player statistics for a fixture.
 
         Args:
             fixture_id: ID du match
-            team_id: ID de l'équipe (optionnel)
+            team_id: ID of the team (optional)
         """
         params = {"fixture": fixture_id}
         if team_id:
@@ -479,13 +558,13 @@ class FootballAPIClient:
         timezone: Optional[str] = None
     ) -> List[Dict]:
         """
-        Récupère la liste des blessures
+        Return injuries.
 
         Args:
             league_id: ID de la ligue
             season: Saison
             fixture_id: ID du match
-            team_id: ID de l'équipe
+            team_id: ID of the team
             player_id: ID du joueur
             date: Date (YYYY-MM-DD)
             timezone: Timezone
@@ -514,7 +593,7 @@ class FootballAPIClient:
     # ==========================================
     async def get_predictions(self, fixture_id: int) -> Dict:
         """
-        Récupère les prédictions pour un match
+        Return predictions for a fixture.
 
         Args:
             fixture_id: ID du match
@@ -538,7 +617,7 @@ class FootballAPIClient:
         timezone: Optional[str] = None
     ) -> List[Dict]:
         """
-        Récupère les cotes des bookmakers
+        Return odds from bookmakers.
 
         Args:
             fixture_id: ID du match
@@ -569,7 +648,7 @@ class FootballAPIClient:
         return data.get("response", [])
 
     async def get_bookmakers(self, bookmaker_id: Optional[int] = None, search: Optional[str] = None) -> List[Dict]:
-        """Récupère la liste des bookmakers"""
+        """Return the list of bookmakers."""
         params = {}
         if bookmaker_id:
             params["id"] = bookmaker_id
@@ -580,7 +659,7 @@ class FootballAPIClient:
         return data.get("response", [])
 
     async def get_bets(self, bet_id: Optional[int] = None, search: Optional[str] = None) -> List[Dict]:
-        """Récupère la liste des types de paris disponibles"""
+        """Return the list of available bet types."""
         params = {}
         if bet_id:
             params["id"] = bet_id
@@ -591,12 +670,12 @@ class FootballAPIClient:
         return data.get("response", [])
 
     async def get_odds_mapping(self) -> List[Dict]:
-        """Récupère le mapping des cotes"""
+        """Return odds mapping metadata."""
         data = await self._make_request("odds/mapping")
         return data.get("response", [])
 
     async def get_odds_live(self, fixture_id: Optional[int] = None, league_id: Optional[int] = None, bet_id: Optional[int] = None) -> List[Dict]:
-        """Récupère les cotes en direct"""
+        """Return live odds."""
         params = {}
         if fixture_id:
             params["fixture"] = fixture_id
@@ -621,15 +700,15 @@ class FootballAPIClient:
         page: int = 1
     ) -> Dict:
         """
-        Récupère les informations et statistiques des joueurs
+        Return player information and statistics.
 
         Args:
             player_id: ID du joueur
-            team_id: ID de l'équipe
+            team_id: ID of the team
             league_id: ID de la ligue
             season: Saison
             search: Recherche par nom
-            page: Page de résultats (25 résultats par page)
+            page: Results page (25 results per page)
         """
         params = {"page": page}
         if player_id:
@@ -646,15 +725,47 @@ class FootballAPIClient:
         data = await self._make_request("players", params)
         return data
 
+
+    async def get_player_profiles(
+        self,
+        player_id: Optional[int] = None,
+        search: Optional[str] = None,
+        page: int = 1,
+    ) -> List[Dict]:
+        """Recupere les profils joueurs (bio, poste, numero)."""
+        params = {"page": page}
+        if player_id:
+            params["player"] = player_id
+        if search:
+            params["search"] = search
+
+        data = await self._make_request("players/profiles", params)
+        return data.get("response", [])
+
+    async def get_players_squads(
+        self,
+        team_id: Optional[int] = None,
+        player_id: Optional[int] = None,
+    ) -> List[Dict]:
+        """Recupere l'effectif d'une equipe ou les equipes d'un joueur."""
+        params = {}
+        if team_id:
+            params["team"] = team_id
+        if player_id:
+            params["player"] = player_id
+
+        data = await self._make_request("players/squads", params)
+        return data.get("response", [])
+
     async def get_player_seasons(self, player_id: int) -> List[int]:
-        """Récupère les saisons disponibles pour un joueur"""
+        """List available seasons for a player."""
         params = {"player": player_id}
         data = await self._make_request("players/seasons", params)
         return data.get("response", [])
 
     async def get_top_scorers(self, league_id: int, season: int) -> List[Dict]:
         """
-        Récupère les meilleurs buteurs d'une ligue
+        Return top scorers for a league.
 
         Args:
             league_id: ID de la ligue
@@ -669,7 +780,7 @@ class FootballAPIClient:
 
     async def get_top_assists(self, league_id: int, season: int) -> List[Dict]:
         """
-        Récupère les meilleurs passeurs d'une ligue
+        Return top assists for a league.
 
         Args:
             league_id: ID de la ligue
@@ -683,7 +794,7 @@ class FootballAPIClient:
         return data.get("response", [])
 
     async def get_top_yellow_cards(self, league_id: int, season: int) -> List[Dict]:
-        """Récupère les joueurs avec le plus de cartons jaunes"""
+        """Return players with the most yellow cards."""
         params = {
             "league": league_id,
             "season": season
@@ -692,7 +803,7 @@ class FootballAPIClient:
         return data.get("response", [])
 
     async def get_top_red_cards(self, league_id: int, season: int) -> List[Dict]:
-        """Récupère les joueurs avec le plus de cartons rouges"""
+        """Return players with the most red cards."""
         params = {
             "league": league_id,
             "season": season
@@ -705,11 +816,11 @@ class FootballAPIClient:
     # ==========================================
     async def get_transfers(self, player_id: Optional[int] = None, team_id: Optional[int] = None) -> List[Dict]:
         """
-        Récupère l'historique des transferts
+        Return transfer history.
 
         Args:
             player_id: ID du joueur
-            team_id: ID de l'équipe
+            team_id: ID of the team
         """
         params = {}
         if player_id:
@@ -725,11 +836,11 @@ class FootballAPIClient:
     # ==========================================
     async def get_trophies(self, player_id: Optional[int] = None, coach_id: Optional[int] = None) -> List[Dict]:
         """
-        Récupère les trophées gagnés
+        Return trophies won.
 
         Args:
             player_id: ID du joueur
-            coach_id: ID de l'entraîneur
+            coach_id: ID of the coach
         """
         params = {}
         if player_id:
@@ -745,11 +856,11 @@ class FootballAPIClient:
     # ==========================================
     async def get_sidelined(self, player_id: Optional[int] = None, coach_id: Optional[int] = None) -> List[Dict]:
         """
-        Récupère l'historique des absences (blessures, suspensions)
+        Return sidelined history (injuries, suspensions).
 
         Args:
             player_id: ID du joueur
-            coach_id: ID de l'entraîneur
+            coach_id: ID of the coach
         """
         params = {}
         if player_id:
@@ -761,7 +872,7 @@ class FootballAPIClient:
         return data.get("response", [])
 
     # ==========================================
-    # COACHES (ENTRAÎNEURS)
+    # COACHES (ENTRAINEURS)
     # ==========================================
     async def get_coaches(
         self,
@@ -770,11 +881,11 @@ class FootballAPIClient:
         search: Optional[str] = None
     ) -> List[Dict]:
         """
-        Récupère les informations des entraîneurs
+        Return coach information.
 
         Args:
-            coach_id: ID de l'entraîneur
-            team_id: ID de l'équipe
+            coach_id: ID of the coach
+            team_id: ID of the team
             search: Recherche par nom
         """
         params = {}
@@ -792,7 +903,7 @@ class FootballAPIClient:
     # UTILITY FUNCTIONS
     # ==========================================
     async def get_status(self) -> Dict:
-        """Récupère le statut de l'API et les informations du compte"""
+        """Return API status and account information."""
         data = await self._make_request("status")
         return data
 
@@ -804,7 +915,7 @@ class FootballAPIClient:
     # HELPER FUNCTIONS (pour faciliter l'usage)
     # ==========================================
     async def search_team(self, team_name: str) -> Optional[Dict]:
-        """Recherche une équipe par nom et retourne la première correspondance"""
+        """Search a team by name and return the first match."""
         teams = await self.get_teams(search=team_name)
         return teams[0] if teams else None
 
@@ -815,22 +926,22 @@ class FootballAPIClient:
         return response[0] if response else None
 
     async def get_live_fixtures(self) -> List[Dict]:
-        """Récupère tous les matchs en direct"""
+        """Return all live fixtures."""
         return await self.get_fixtures(live="all")
 
     async def get_fixtures_by_date(self, date: str) -> List[Dict]:
-        """Récupère tous les matchs d'une date donnée (YYYY-MM-DD)"""
+        """Return all fixtures for a given date (YYYY-MM-DD)."""
         return await self.get_fixtures(date=date)
 
     async def get_team_next_fixtures(self, team_id: int, n: int = 5) -> List[Dict]:
-        """Récupère les N prochains matchs d'une équipe"""
+        """Return the next N fixtures for a team."""
         return await self.get_fixtures(team_id=team_id, next=n)
 
     async def get_team_last_fixtures(self, team_id: int, n: int = 5) -> List[Dict]:
-        """Récupère les N derniers matchs d'une équipe"""
+        """Return the last N fixtures for a team."""
         return await self.get_fixtures(team_id=team_id, last=n)
 
     async def get_league_current_round(self, league_id: int, season: int) -> Optional[str]:
-        """Récupère la journée actuelle d'une ligue"""
+        """Return the current round for a league."""
         rounds = await self.get_fixture_rounds(league_id, season, current=True)
         return rounds[0] if rounds else None

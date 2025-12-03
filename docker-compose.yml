@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  lucide-api:
+    build: .
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "5000"]

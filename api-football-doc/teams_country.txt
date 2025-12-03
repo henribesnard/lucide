@@ -1,0 +1,21 @@
+// Get all countries available for the teams endpoints
+get("https://v3.football.api-sports.io/teams/countries");
+
+
+{
+  "get": "teams/countries",
+  "parameters": [],
+  "errors": [],
+  "results": 258,
+  "paging": {
+    "current": 1,
+    "total": 1
+  },
+  "response": [
+    {
+      "name": "England",
+      "code": "GB",
+      "flag": "https://media.api-sports.io/flags/gb.svg"
+    }
+  ]
+}
