@@ -34,7 +34,7 @@ uvicorn backend.main:app --reload
 ## Lancer via Docker
 
 ```bash
-# Assure-toi d'avoir un .env avec les clés LLM et API-Football
+# Assure-toi d'avoir un .env avec les cles LLM et API-Football
 docker compose up --build
 # L'API sera disponible sur http://localhost:5000
 ```
@@ -43,9 +43,10 @@ Endpoints utiles :
 - `GET /health` : verifie la configuration LLM
 - `POST /chat` : payload `{ "message": "...", "session_id": "optionnel" }`
 
-## Frontend (statique)
-- Ouvre `frontend/index.html` dans un navigateur (le frontend cible `http://localhost:5000/chat` par défaut).
-- Le frontend est responsive et peut être packagé en webview (Android/iOS). Il maintient la `session_id` en localStorage et affiche l’intention, les tools et les entités renvoyées par l’API.
+## Frontend (Next.js + Tailwind)
+- Frontend Next 14 + Tailwind dans `frontend/`.
+- Lancer en dev : `cd frontend && npm install && npm run dev` (cible `http://localhost:5000/chat` par defaut, configurable via `NEXT_PUBLIC_API_URL`).
+- UI teal/amber avec sidebar, barre de recherche, zone de conversation, panneau contexte (live/trending/stats). Responsive desktop/tablette/mobile; session persiste en localStorage; quick actions et follow-ups pré-remplissent les questions.
 
 La reponse du `/chat` expose aussi l'intention detectee, les entites extraites et les tools utilises (pour debug).
 
@@ -63,12 +64,13 @@ Les prompts centraux sont regroupes dans `backend/prompts.py`.
 
 Outils principaux relies a l'API-Football (voir `backend/tools/football.py`) :
 - `search_team`, `search_player`
-- `fixtures_by_date`, `team_next_fixtures`, `live_fixtures`
+- `fixtures_by_date`, `fixtures_search`, `team_next_fixtures`, `live_fixtures`
 - `standings`, `team_statistics`, `head_to_head`
-- `top_scorers`, `top_assists`
-- `injuries`
+- `fixture_events`, `fixture_lineups`, `fixture_statistics`, `fixture_players`
+- `top_scorers`, `top_assists`, `top_yellow_cards`, `top_red_cards`
+- `injuries`, `sidelined`
 - `predictions`
-- `odds_by_date`, `odds_by_fixture`
+- `odds_by_date`, `odds_by_fixture`, `odds_live`, `odds_bookmakers`, `odds_bets`, `odds_mapping`, `api_status`
 
 Chaque tool renvoie des structures compactes pour limiter le contexte envoye au LLM.
 

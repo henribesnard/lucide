@@ -1,5 +1,9 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Literal
+from dotenv import load_dotenv
+
+# Force reload .env to ensure fresh values
+load_dotenv(override=True)
 
 
 class Settings(BaseSettings):
@@ -22,6 +26,9 @@ class Settings(BaseSettings):
     # Football API
     FOOTBALL_API_KEY: str = ""
     FOOTBALL_API_BASE_URL: str = "https://v3.football.api-sports.io"
+
+    # Redis
+    REDIS_URL: str = "redis://localhost:6379"
 
     # App
     DEBUG: bool = False

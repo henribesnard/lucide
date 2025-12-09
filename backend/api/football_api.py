@@ -1,37 +1,19 @@
 import httpx
 from typing import Dict, List, Optional, Any
 import logging
-import json
 from datetime import datetime
+
+from backend.utils.status_mapping import is_valid_status
 
 logger = logging.getLogger(__name__)
 
-MATCH_STATUS_CODES = [
-    "TBD",
-    "NS",
-    "1H",
-    "HT",
-    "2H",
-    "ET",
-    "BT",
-    "P",
-    "SUSP",
-    "INT",
-    "FT",
-    "AET",
-    "PEN",
-    "PST",
-    "CANC",
-    "ABD",
-    "AWD",
-    "WO",
-    "LIVE",
-]
 
+class FootballAPIError(Exception):
+    """Custom error to surface API-Football issues with context."""
 
-
-def is_valid_status(status: str) -> bool:
-    return status.upper() in MATCH_STATUS_CODES
+    def __init__(self, message: str, status_code: Optional[int] = None):
+        super().__init__(message)
+        self.status_code = status_code
 
 
 class FootballAPIClient:
@@ -55,24 +37,40 @@ class FootballAPIClient:
 
     async def _make_request(self, endpoint: str, params: Dict = None) -> Dict:
         """Perform an HTTP request to API-Football and return the parsed payload."""
+        params = params or {}
         try:
             url = f"{self.base_url}/{endpoint}"
             logger.info(f"API Request: {endpoint} with params: {params}")
 
             response = await self.client.get(url, headers=self.headers, params=params)
             response.raise_for_status()
-            data = response.json()
 
-            if data.get("errors") and len(data["errors"]) > 0:
-                logger.error(f"API Error: {data['errors']}")
-                raise Exception(f"API Error: {data['errors']}")
+            try:
+                data = response.json()
+            except Exception as exc:
+                logger.error("Invalid JSON payload from API-Football: %s", exc)
+                raise FootballAPIError("Invalid JSON payload from API-Football", status_code=response.status_code) from exc
 
-            logger.info(f"API Response: {len(data.get('response', []))} results")
+            if data.get("errors"):
+                logger.error("API Error on %s: %s", endpoint, data["errors"])
+                raise FootballAPIError(f"API Error: {data['errors']}", status_code=response.status_code)
+
+            logger.info("API Response: %s results", len(data.get("response", [])))
             return data
 
-        except httpx.HTTPError as e:
-            logger.error(f"HTTP Error: {e}")
-            raise
+        except httpx.TimeoutException as exc:
+            logger.error("API-Football timeout on %s: %s", endpoint, exc)
+            raise FootballAPIError("API-Football timeout reached", status_code=None) from exc
+        except httpx.HTTPStatusError as exc:
+            detail = exc.response.text
+            logger.error("HTTP status error on %s: %s - %s", endpoint, exc.response.status_code, detail)
+            raise FootballAPIError(
+                f"HTTP {exc.response.status_code} on {endpoint}: {detail}",
+                status_code=exc.response.status_code,
+            ) from exc
+        except httpx.HTTPError as exc:
+            logger.error("HTTP error on %s: %s", endpoint, exc)
+            raise FootballAPIError("HTTP error while calling API-Football") from exc
 
     # ==========================================
     # TIMEZONE
@@ -389,7 +387,10 @@ class FootballAPIClient:
         if round_:
             params["round"] = round_
         if status:
-            params["status"] = status
+            status_value = status.upper()
+            if not is_valid_status(status_value):
+                raise FootballAPIError(f"Invalid match status code: {status}")
+            params["status"] = status_value
         if venue_id:
             params["venue"] = venue_id
         if timezone:
@@ -463,7 +464,10 @@ class FootballAPIClient:
         if season:
             params["season"] = season
         if status:
-            params["status"] = status
+            status_value = status.upper()
+            if not is_valid_status(status_value):
+                raise FootballAPIError(f"Invalid match status code: {status}")
+            params["status"] = status_value
         if venue_id:
             params["venue"] = venue_id
         if timezone:

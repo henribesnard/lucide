@@ -4,9 +4,15 @@ from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 import uuid
 import logging
+from datetime import datetime
 
 from backend.agents.pipeline import LucidePipeline
 from backend.config import settings
+from backend.api.football_api import FootballAPIClient
+from backend.db.database import init_db
+from backend.auth.router import router as auth_router
+from backend.conversations.router import router as conversations_router
+from backend.context.context_manager import ContextManager
 
 # Logging configuration
 logging.basicConfig(
@@ -30,12 +36,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include routers
+app.include_router(auth_router)
+app.include_router(conversations_router)
+
 sessions: Dict[str, LucidePipeline] = {}
+football_client: Optional[FootballAPIClient] = None
+context_manager: Optional[ContextManager] = None
 
 
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
+    context: Optional[Dict[str, Any]] = None
 
 
 class ChatResponse(BaseModel):
@@ -80,8 +93,11 @@ async def chat(request: ChatRequest):
             sessions[session_id] = LucidePipeline(session_id=session_id)
 
         pipeline = sessions[session_id]
-        logger.info(f"Processing message for session {session_id}: {request.message[:120]}...")
-        result = await pipeline.process(request.message)
+        message_to_process = request.message
+        if request.context:
+            logger.info(f"Processing with context: {request.context}")
+        logger.info(f"Processing message for session {session_id}: {message_to_process[:120]}...")
+        result = await pipeline.process(message_to_process)
 
         intent_obj = result["intent"]
         tool_names = [tool.name for tool in result["tool_results"]]
@@ -110,15 +126,223 @@ async def delete_session(session_id: str):
 
 @app.on_event("startup")
 async def startup_event():
+    global football_client, context_manager
     logger.info("LUCIDE API starting up...")
     logger.info(f"LLM Provider: {settings.LLM_PROVIDER}")
+
+    # Initialize database
+    try:
+        logger.info("Initializing database...")
+        init_db()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}")
+
+    football_client = FootballAPIClient(api_key=settings.FOOTBALL_API_KEY)
+
+    # Initialize context manager
+    try:
+        logger.info("Initializing context manager...")
+        context_manager = ContextManager()
+        logger.info("Context manager initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize context manager: {e}")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
+    global football_client, context_manager
     logger.info("LUCIDE API shutting down...")
     for _, pipeline in sessions.items():
         await pipeline.close()
+    if football_client:
+        await football_client.close()
+    if context_manager:
+        await context_manager.close()
+
+
+# ==========================================
+# DATA ENDPOINTS FOR FRONTEND
+# ==========================================
+
+@app.get("/api/countries", tags=["Data"])
+async def get_countries():
+    """Get all available countries from API-Football."""
+    try:
+        if not football_client:
+            raise HTTPException(status_code=500, detail="Football API client not initialized")
+        countries = await football_client.get_countries()
+        return {"countries": countries}
+    except Exception as exc:
+        logger.error(f"Error fetching countries: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/leagues", tags=["Data"])
+async def get_leagues(country: Optional[str] = None, current: Optional[bool] = True):
+    """Get all available leagues, optionally filtered by country."""
+    try:
+        if not football_client:
+            raise HTTPException(status_code=500, detail="Football API client not initialized")
+
+        # Get current season
+        current_year = datetime.now().year
+        season = current_year if datetime.now().month >= 8 else current_year - 1
+
+        leagues = await football_client.get_leagues(
+            country=country,
+            current=current,
+            season=season
+        )
+        return {"leagues": leagues}
+    except Exception as exc:
+        logger.error(f"Error fetching leagues: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/fixtures", tags=["Data"])
+async def get_fixtures(
+    league_id: Optional[int] = None,
+    date: Optional[str] = None,
+    season: Optional[int] = None
+):
+    """Get fixtures for a specific league and date."""
+    try:
+        if not football_client:
+            raise HTTPException(status_code=500, detail="Football API client not initialized")
+
+        # If no date provided, use today
+        if not date:
+            date = datetime.now().strftime("%Y-%m-%d")
+
+        # If no season provided, calculate current season
+        if not season:
+            current_year = datetime.now().year
+            season = current_year if datetime.now().month >= 8 else current_year - 1
+
+        fixtures = await football_client.get_fixtures(
+            league_id=league_id,
+            date=date,
+            season=season
+        )
+        return {"fixtures": fixtures, "date": date}
+    except Exception as exc:
+        logger.error(f"Error fetching fixtures: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+# ==========================================
+# CONTEXT ENDPOINTS
+# ==========================================
+
+@app.get("/api/context/match/{fixture_id}", tags=["Context"])
+async def get_match_context(fixture_id: int):
+    """Get or create context for a specific match."""
+    try:
+        if not context_manager:
+            raise HTTPException(status_code=500, detail="Context manager not initialized")
+
+        if not football_client:
+            raise HTTPException(status_code=500, detail="Football API client not initialized")
+
+        # Try to get existing context
+        today = datetime.now().strftime("%Y%m%d")
+        context_id = f"match_{fixture_id}_{today}"
+        context = context_manager.get_context(context_id)
+
+        if context:
+            logger.info(f"Found existing context for match {fixture_id}")
+            return {"context": context}
+
+        # Create new context - fetch match data
+        logger.info(f"Creating new context for match {fixture_id}")
+        fixtures = await football_client.get_fixtures(fixture_id=fixture_id)
+
+        if not fixtures or len(fixtures) == 0:
+            raise HTTPException(status_code=404, detail="Match not found")
+
+        fixture = fixtures[0]
+        context = context_manager.create_match_context(
+            fixture_id=fixture_id,
+            match_date=fixture["fixture"]["date"],
+            home_team=fixture["teams"]["home"]["name"],
+            away_team=fixture["teams"]["away"]["name"],
+            league=fixture["league"]["name"],
+            status_code=fixture["fixture"]["status"]["short"],
+        )
+
+        # Save to Redis
+        context_manager.save_context(context)
+
+        return {"context": context}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"Error fetching match context: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/context/league/{league_id}", tags=["Context"])
+async def get_league_context(league_id: int, season: Optional[int] = None):
+    """Get or create context for a specific league."""
+    try:
+        if not context_manager:
+            raise HTTPException(status_code=500, detail="Context manager not initialized")
+
+        if not football_client:
+            raise HTTPException(status_code=500, detail="Football API client not initialized")
+
+        # Calculate season if not provided
+        if not season:
+            current_year = datetime.now().year
+            season = current_year if datetime.now().month >= 8 else current_year - 1
+
+        # Try to get existing context
+        context_id = f"league_{league_id}_{season}"
+        context = context_manager.get_context(context_id)
+
+        if context:
+            logger.info(f"Found existing context for league {league_id}")
+            return {"context": context}
+
+        # Create new context - fetch league data
+        logger.info(f"Creating new context for league {league_id}")
+        leagues = await football_client.get_leagues(league_id=league_id, season=season)
+
+        if not leagues or len(leagues) == 0:
+            raise HTTPException(status_code=404, detail="League not found")
+
+        league = leagues[0]
+        context = context_manager.create_league_context(
+            league_id=league_id,
+            league_name=league["league"]["name"],
+            country=league["country"]["name"],
+            season=season,
+        )
+
+        # Save to Redis
+        context_manager.save_context(context)
+
+        return {"context": context}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"Error fetching league context: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/contexts", tags=["Context"])
+async def list_contexts():
+    """List all active contexts."""
+    try:
+        if not context_manager:
+            raise HTTPException(status_code=500, detail="Context manager not initialized")
+
+        context_ids = context_manager.list_active_contexts()
+        return {"contexts": context_ids, "count": len(context_ids)}
+    except Exception as exc:
+        logger.error(f"Error listing contexts: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 if __name__ == "__main__":

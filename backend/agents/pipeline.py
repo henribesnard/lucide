@@ -5,10 +5,12 @@ from backend.agents.analysis_agent import AnalysisAgent
 from backend.agents.intent_agent import IntentAgent
 from backend.agents.response_agent import ResponseAgent
 from backend.agents.tool_agent import ToolAgent
+from backend.agents.context_agent import ContextAgent
 from backend.agents.types import AnalysisResult, IntentResult, ToolCallResult
 from backend.api.football_api import FootballAPIClient
 from backend.config import settings
 from backend.llm.client import LLMClient
+from backend.core.data_collector import DataCollector
 
 logger = logging.getLogger(__name__)
 
@@ -16,10 +18,14 @@ logger = logging.getLogger(__name__)
 class LucidePipeline:
     """
     Orchestrates the full loop:
-    intent/entity extraction -> tool calling -> structured analysis -> final answer.
+    intent/entity extraction -> tool calling (with context caching) -> structured analysis -> final answer.
+
+    Key feature: Match analysis with intelligent caching
+    - First access: 25 API calls to collect all data + run 8 analyzers
+    - Subsequent accesses: 0 API calls (loads from cache)
     """
 
-    def __init__(self, session_id: str | None = None):
+    def __init__(self, session_id: str | None = None, storage_path: str = "./data/match_contexts"):
         self.session_id = session_id
         self.llm = LLMClient(
             provider=settings.LLM_PROVIDER,
@@ -31,8 +37,14 @@ class LucidePipeline:
             api_key=settings.FOOTBALL_API_KEY,
             base_url=settings.FOOTBALL_API_BASE_URL,
         )
+
+        # Initialize context management components
+        self.data_collector = DataCollector(self.api_client)
+        self.context_agent = ContextAgent(self.data_collector, storage_path=storage_path)
+
+        # Initialize agents
         self.intent_agent = IntentAgent(self.llm)
-        self.tool_agent = ToolAgent(self.llm, self.api_client)
+        self.tool_agent = ToolAgent(self.llm, self.api_client, context_agent=self.context_agent)
         self.analysis_agent = AnalysisAgent(self.llm)
         self.response_agent = ResponseAgent(self.llm)
 
@@ -43,6 +55,19 @@ class LucidePipeline:
         assistant_notes = "Aucun appel de tool requis."
         if intent.needs_data:
             tool_results, assistant_notes = await self.tool_agent.run(user_message, intent)
+            # Best-effort check for critical data in match analysis
+            if intent.intent == "analyse_rencontre":
+                required_tools = {
+                    "fixtures_search",
+                    "team_last_fixtures",
+                    "standings",
+                    "team_statistics",
+                    "head_to_head",
+                }
+                available = {tr.name for tr in tool_results}
+                missing = required_tools - available
+                if missing:
+                    logger.warning(f"analyse_rencontre: missing critical data from tools: {sorted(missing)}")
 
         analysis: AnalysisResult = await self.analysis_agent.run(
             user_message=user_message,

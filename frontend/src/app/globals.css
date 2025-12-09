@@ -1,0 +1,161 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+@layer base {
+  * {
+    @apply antialiased;
+  }
+
+  input,
+  textarea,
+  button,
+  select {
+    @apply outline-none focus:outline-none;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .shadow-glow {
+    box-shadow: 0 0 15px rgba(13, 148, 136, 0.3);
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Fade-in animation for messages and cards */
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Slide-in from left for secondary sidebar */
+  .animate-slide-in-left {
+    animation: slideInLeft 0.3s ease-out;
+  }
+
+  @keyframes slideInLeft {
+    from {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  /* Pulse animation for loading states */
+  .animate-pulse-slow {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  /* Scale animation for hover states */
+  .hover-scale {
+    transition: transform 0.2s ease-in-out;
+  }
+
+  .hover-scale:hover {
+    transform: scale(1.02);
+  }
+
+  /* Smooth transitions for all interactive elements */
+  .transition-smooth {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply rounded-lg bg-gradient-to-r from-teal-600 to-teal-700 px-4 py-2 font-semibold text-white shadow-md transition-all hover:from-teal-700 hover:to-teal-800 hover:shadow-lg;
+  }
+
+  .btn-secondary {
+    @apply rounded-lg border border-slate-200 bg-white px-4 py-2 font-semibold text-slate-700 transition-all hover:border-teal-600 hover:bg-teal-50;
+  }
+
+  .card {
+    @apply rounded-xl border border-slate-200 bg-white p-4 shadow-sm;
+  }
+
+  .input-field {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm transition-all focus:border-teal-500 focus:ring-2 focus:ring-teal-200;
+  }
+
+  /* Chat message styles */
+  .message-bubble {
+    @apply rounded-2xl px-4 py-3 shadow-sm transition-smooth;
+  }
+
+  .message-user {
+    @apply message-bubble bg-teal-600 text-white rounded-tr-sm;
+  }
+
+  .message-assistant {
+    @apply message-bubble bg-white border border-gray-200 rounded-tl-sm;
+  }
+
+  /* Sidebar styles */
+  .sidebar-item {
+    @apply w-12 h-12 rounded-lg flex items-center justify-center transition-all cursor-pointer;
+  }
+
+  .sidebar-item-active {
+    @apply sidebar-item bg-teal-50 text-teal-600;
+  }
+
+  .sidebar-item-inactive {
+    @apply sidebar-item text-gray-600 hover:bg-gray-100;
+  }
+
+  /* Selection card styles */
+  .selection-card {
+    @apply p-4 border-2 border-gray-200 rounded-xl transition-all cursor-pointer hover-scale;
+  }
+
+  .selection-card:hover {
+    @apply border-teal-500 bg-teal-50;
+  }
+}

@@ -8,8 +8,16 @@ import time
 from datetime import datetime
 
 from backend.api.football_api import FootballAPIClient
+from backend.utils.status_mapping import get_status_info
 
 logger = logging.getLogger(__name__)
+
+
+def _limit_list(items: Any, limit: int = 5) -> Any:
+    """Truncate lists to keep payloads compact."""
+    if isinstance(items, list):
+        return items[:limit]
+    return items
 
 
 def _summarize_country(item: Dict[str, Any]) -> Dict[str, Any]:
@@ -70,10 +78,13 @@ def _summarize_fixture(item: Dict[str, Any]) -> Dict[str, Any]:
     league = item.get("league", {})
     teams = item.get("teams", {})
     goals = item.get("goals", {})
+    status_info = get_status_info((fixture.get("status") or {}).get("short"))
     return {
         "fixture_id": fixture.get("id"),
         "date": fixture.get("date"),
-        "status": (fixture.get("status") or {}).get("short"),
+        "status_code": status_info["code"],
+        "status_label": status_info["label"],
+        "status_type": status_info["type"],
         "venue": (fixture.get("venue") or {}).get("name"),
         "league": {
             "id": league.get("id"),
@@ -209,7 +220,45 @@ def _summarize_odds(item: Dict[str, Any]) -> Dict[str, Any]:
         "league": league.get("name"),
         "bookmaker": main_book.get("name"),
         "bet": first_bet.get("name"),
-        "values": values[:5],
+        "values": _limit_list(values, limit=5),
+    }
+
+
+def _summarize_live_odds(item: Dict[str, Any]) -> Dict[str, Any]:
+    fixture = item.get("fixture", {})
+    league = item.get("league", {})
+    bookmakers = item.get("bookmakers") or []
+    main_book = bookmakers[0] if bookmakers else {}
+    bets = main_book.get("bets") or []
+    first_bet = bets[0] if bets else {}
+    values = first_bet.get("values") or []
+    return {
+        "fixture_id": fixture.get("id"),
+        "league": league.get("name"),
+        "updated_at": item.get("update"),
+        "bookmaker": main_book.get("name"),
+        "bet": first_bet.get("name"),
+        "values": _limit_list(values, limit=5),
+    }
+
+
+def _summarize_bookmaker(item: Dict[str, Any]) -> Dict[str, Any]:
+    return {"id": item.get("id"), "name": item.get("name"), "url": item.get("link")}
+
+
+def _summarize_bet(item: Dict[str, Any]) -> Dict[str, Any]:
+    return {"id": item.get("id"), "name": item.get("name"), "group": item.get("group")}
+
+
+def _summarize_odds_mapping(item: Dict[str, Any]) -> Dict[str, Any]:
+    fixture = item.get("fixture", {}) or {}
+    league = item.get("league", {}) or {}
+    return {
+        "fixture_id": fixture.get("id"),
+        "league_id": league.get("id"),
+        "league": league.get("name"),
+        "season": league.get("season"),
+        "updated_at": item.get("update"),
     }
 
 def _summarize_event(item: Dict[str, Any]) -> Dict[str, Any]:
@@ -284,7 +333,7 @@ def _summarize_fixture_players(item: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "team": team.get("name"),
         "team_id": team.get("id"),
-        "players": simplified,
+        "players": _limit_list(simplified, limit=12),
     }
 
 
@@ -325,6 +374,28 @@ def _infer_season(date_str: str | None) -> int:
 
 # Tool definitions exposed to the LLM
 TOOL_DEFINITIONS: List[Dict[str, Any]] = [
+    {
+        "type": "function",
+        "function": {
+            "name": "analyze_match",
+            "description": "Analyse complete d'un match pour les paris sportifs. Collecte toutes les donnees necessaires (25 appels API la premiere fois, 0 ensuite grace au cache) et analyse 8 types de paris: 1X2, buts, tirs, corners, cartons equipe, carton joueur, buteur, passeur. IMPORTANT: Utilise ce tool pour toute question d'analyse de match au lieu des tools classiques.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "fixture_id": {
+                        "type": "integer",
+                        "description": "ID du match a analyser (obligatoire)"
+                    },
+                    "bet_type": {
+                        "type": "string",
+                        "description": "Type de pari specifique (optionnel): 1x2, goals, shots, corners, cards_team, card_player, scorer, assister. Si absent, retourne un resume de toutes les analyses.",
+                        "enum": ["1x2", "goals", "shots", "corners", "cards_team", "card_player", "scorer", "assister"]
+                    }
+                },
+                "required": ["fixture_id"],
+            },
+        },
+    },
     {
         "type": "function",
         "function": {
@@ -555,6 +626,25 @@ TOOL_DEFINITIONS: List[Dict[str, Any]] = [
                     "current": {"type": "boolean"},
                 },
                 "required": ["league_id", "season"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "team_last_fixtures",
+            "description": "Recupere les derniers matchs d'une equipe pour analyser la forme recente.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "team_id": {"type": "integer"},
+                    "count": {
+                        "type": "integer",
+                        "description": "Nombre de matchs a ramener",
+                        "default": 5,
+                    },
+                },
+                "required": ["team_id"],
             },
         },
     },
@@ -838,6 +928,60 @@ TOOL_DEFINITIONS: List[Dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "odds_live",
+            "description": "Cotes live (en cours) pour un match ou une ligue.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "fixture_id": {"type": "integer"},
+                    "league_id": {"type": "integer"},
+                    "bet_id": {"type": "integer"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "odds_bookmakers",
+            "description": "Referentiel des bookmakers disponibles.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "bookmaker_id": {"type": "integer"},
+                    "search": {"type": "string"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "odds_bets",
+            "description": "Referentiel des types de paris (bets).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "bet_id": {"type": "integer"},
+                    "search": {"type": "string"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "odds_mapping",
+            "description": "Mapping complet des cotes disponibles (fixture/league).",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "transfers",
             "description": "Historique des transferts d'un joueur ou d'une equipe.",
             "parameters": {
@@ -897,6 +1041,14 @@ TOOL_DEFINITIONS: List[Dict[str, Any]] = [
                 },
                 "required": [],
             },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "api_status",
+            "description": "Etat du quota API-Football (endpoint /status).",
+            "parameters": {"type": "object", "properties": {}, "required": []},
         },
     },
 ]
@@ -985,7 +1137,10 @@ async def execute_tool(
                 league_id=args.get("league_id"),
             )
             items = data.get("response", [])
-            return {"players": [_summarize_player(it) for it in items]}
+            return {
+                "players": [_summarize_player(it) for it in items],
+                "paging": data.get("paging") or {},
+            }
 
         if name == "players_squads":
             squads = await api_client.get_players_squads(
@@ -1003,29 +1158,40 @@ async def execute_tool(
                 season=season,
                 status=args.get("status"),
             )
-            return {"fixtures": [_summarize_fixture(fx) for fx in fixtures]}
+            summarized = [_summarize_fixture(fx) for fx in fixtures]
+            return {"fixtures": _limit_list(summarized, limit=15)}
 
         if name == "fixtures_search":
             season = args.get("season")
-            if args.get("league_id") and not season:
-                season = _infer_season(args.get("date"))
+            if not season:
+                if args.get("date"):
+                    try:
+                        date_obj = datetime.fromisoformat(args["date"])
+                        season = date_obj.year if date_obj.month >= 8 else date_obj.year - 1
+                    except Exception:
+                        now = datetime.utcnow()
+                        season = now.year if now.month >= 8 else now.year - 1
+                else:
+                    now = datetime.utcnow()
+                    season = now.year if now.month >= 8 else now.year - 1
             fixtures = await api_client.get_fixtures(
                 fixture_id=args.get("fixture_id"),
-                league_id=args.get("league_id"),
-                season=season,
-                team_id=args.get("team_id"),
-                date=args.get("date"),
-                from_date=args.get("from_date"),
-                to_date=args.get("to_date"),
-                round_=args.get("round"),
-                status=args.get("status"),
-                venue_id=args.get("venue_id"),
-                timezone=args.get("timezone"),
-                live=args.get("live"),
-                last=args.get("last"),
-                next=args.get("next"),
+                league_id=None if args.get("fixture_id") else args.get("league_id"),
+                season=None if args.get("fixture_id") else season,
+                team_id=None if args.get("fixture_id") else args.get("team_id"),
+                date=None if args.get("fixture_id") else args.get("date"),
+                from_date=None if args.get("fixture_id") else args.get("from_date"),
+                to_date=None if args.get("fixture_id") else args.get("to_date"),
+                round_=None if args.get("fixture_id") else args.get("round"),
+                status=None if args.get("fixture_id") else args.get("status"),
+                venue_id=None if args.get("fixture_id") else args.get("venue_id"),
+                timezone=None if args.get("fixture_id") else args.get("timezone"),
+                live=None if args.get("fixture_id") else args.get("live"),
+                last=None if args.get("fixture_id") else args.get("last"),
+                next=None if args.get("fixture_id") else args.get("next"),
             )
-            return {"fixtures": [_summarize_fixture(fx) for fx in fixtures]}
+            summarized = [_summarize_fixture(fx) for fx in fixtures]
+            return {"fixtures": _limit_list(summarized, limit=15)}
 
         if name == "fixture_rounds":
             rounds = await api_client.get_fixture_rounds(
@@ -1033,15 +1199,24 @@ async def execute_tool(
             )
             return {"rounds": rounds}
 
+        if name == "team_last_fixtures":
+            fixtures = await api_client.get_team_last_fixtures(
+                team_id=args["team_id"], n=args.get("count", 5)
+            )
+            summarized = [_summarize_fixture(fx) for fx in fixtures]
+            return {"fixtures": _limit_list(summarized, limit=10)}
+
         if name == "team_next_fixtures":
             fixtures = await api_client.get_team_next_fixtures(
                 team_id=args["team_id"], n=args.get("count", 1)
             )
-            return {"fixtures": [_summarize_fixture(fx) for fx in fixtures]}
+            summarized = [_summarize_fixture(fx) for fx in fixtures]
+            return {"fixtures": _limit_list(summarized, limit=10)}
 
         if name == "live_fixtures":
             fixtures = await api_client.get_live_fixtures()
-            return {"fixtures": [_summarize_fixture(fx) for fx in fixtures]}
+            summarized = [_summarize_fixture(fx) for fx in fixtures]
+            return {"fixtures": _limit_list(summarized, limit=15)}
 
         if name == "standings":
             standings = await api_client.get_standings(
@@ -1074,7 +1249,8 @@ async def execute_tool(
                 venue_id=args.get("venue_id"),
                 timezone=args.get("timezone"),
             )
-            return {"fixtures": [_summarize_fixture(fx) for fx in games]}
+            summarized = [_summarize_fixture(fx) for fx in games]
+            return {"fixtures": _limit_list(summarized, limit=10)}
         if name == "fixture_events":
             events = await api_client.get_fixture_events(
                 fixture_id=args["fixture_id"],
@@ -1082,7 +1258,7 @@ async def execute_tool(
                 player_id=args.get("player_id"),
                 type_=args.get("type"),
             )
-            return {"events": [_summarize_event(ev) for ev in events]}
+            return {"events": _limit_list([_summarize_event(ev) for ev in events], limit=40)}
 
         if name == "fixture_lineups":
             lineups = await api_client.get_fixture_lineups(
@@ -1100,31 +1276,31 @@ async def execute_tool(
             players = await api_client.get_fixture_player_statistics(
                 fixture_id=args["fixture_id"], team_id=args.get("team_id")
             )
-            return {"players": [_summarize_fixture_players(p) for p in players]}
+            return {"players": _limit_list([_summarize_fixture_players(p) for p in players], limit=4)}
 
         if name == "top_scorers":
             scorers = await api_client.get_top_scorers(
                 league_id=args["league_id"], season=args["season"]
             )
-            return {"top_scorers": [_summarize_player(item) for item in scorers]}
+            return {"top_scorers": _limit_list([_summarize_player(item) for item in scorers], limit=10)}
 
         if name == "top_assists":
             assists = await api_client.get_top_assists(
                 league_id=args["league_id"], season=args["season"]
             )
-            return {"top_assists": [_summarize_player(item) for item in assists]}
+            return {"top_assists": _limit_list([_summarize_player(item) for item in assists], limit=10)}
 
         if name == "top_yellow_cards":
             cards = await api_client.get_top_yellow_cards(
                 league_id=args["league_id"], season=args["season"]
             )
-            return {"top_yellow_cards": [_summarize_player(item) for item in cards]}
+            return {"top_yellow_cards": _limit_list([_summarize_player(item) for item in cards], limit=10)}
 
         if name == "top_red_cards":
             cards = await api_client.get_top_red_cards(
                 league_id=args["league_id"], season=args["season"]
             )
-            return {"top_red_cards": [_summarize_player(item) for item in cards]}
+            return {"top_red_cards": _limit_list([_summarize_player(item) for item in cards], limit=10)}
 
         if name == "injuries":
             injuries = await api_client.get_injuries(
@@ -1136,13 +1312,13 @@ async def execute_tool(
                 date=args.get("date"),
                 timezone=args.get("timezone"),
             )
-            return {"injuries": [_summarize_injury(item) for item in injuries]}
+            return {"injuries": _limit_list([_summarize_injury(item) for item in injuries], limit=15)}
 
         if name == "sidelined":
             sidelined = await api_client.get_sidelined(
                 player_id=args.get("player_id"), coach_id=args.get("coach_id")
             )
-            return {"sidelined": sidelined}
+            return {"sidelined": _limit_list(sidelined, limit=15)}
 
         if name == "predictions":
             prediction = await api_client.get_predictions(args["fixture_id"])
@@ -1155,11 +1331,31 @@ async def execute_tool(
                 season=args.get("season"),
                 timezone=args.get("timezone"),
             )
-            return {"odds": [_summarize_odds(item) for item in odds]}
+            return {"odds": _limit_list([_summarize_odds(item) for item in odds], limit=8)}
 
         if name == "odds_by_fixture":
             odds = await api_client.get_odds(fixture_id=args["fixture_id"])
-            return {"odds": [_summarize_odds(item) for item in odds]}
+            return {"odds": _limit_list([_summarize_odds(item) for item in odds], limit=8)}
+
+        if name == "odds_live":
+            odds = await api_client.get_odds_live(
+                fixture_id=args.get("fixture_id"), league_id=args.get("league_id"), bet_id=args.get("bet_id")
+            )
+            return {"odds": _limit_list([_summarize_live_odds(item) for item in odds], limit=8)}
+
+        if name == "odds_bookmakers":
+            bookmakers = await api_client.get_bookmakers(
+                bookmaker_id=args.get("bookmaker_id"), search=args.get("search")
+            )
+            return {"bookmakers": _limit_list([_summarize_bookmaker(b) for b in bookmakers], limit=10)}
+
+        if name == "odds_bets":
+            bets = await api_client.get_bets(bet_id=args.get("bet_id"), search=args.get("search"))
+            return {"bets": _limit_list([_summarize_bet(b) for b in bets], limit=15)}
+
+        if name == "odds_mapping":
+            mapping = await api_client.get_odds_mapping()
+            return {"mapping": _limit_list([_summarize_odds_mapping(item) for item in mapping], limit=15)}
 
         if name == "transfers":
             transfers = await api_client.get_transfers(
@@ -1168,7 +1364,7 @@ async def execute_tool(
             simplified: List[Dict[str, Any]] = []
             for t in transfers:
                 simplified.extend([_summarize_transfer(tr) for tr in t.get("transfers", [])])
-            return {"transfers": simplified}
+            return {"transfers": _limit_list(simplified, limit=15)}
 
         if name == "trophies":
             trophies = await api_client.get_trophies(
@@ -1191,6 +1387,10 @@ async def execute_tool(
                 search=args.get("search"),
             )
             return {"venues": [_summarize_venue(v) for v in venues]}
+
+        if name == "api_status":
+            status = await api_client.get_status()
+            return {"status": status}
 
         return {"error": f"Tool {name} is not implemented"}
 
