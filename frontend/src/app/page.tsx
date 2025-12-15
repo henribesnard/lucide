@@ -10,7 +10,7 @@ export default function Home() {
       <MainSidebar />
 
       {/* Main Content Area */}
-      <div className="lg:ml-16">
+      <div className="w-full lg:ml-16">
         <ChatBubble />
       </div>
     </div>

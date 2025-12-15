@@ -48,6 +48,9 @@ htmlcov/
 
 # Data
 data/
+analyse_loto_foot/
+tests/
+documentation/
 *.db
 *.sqlite
 

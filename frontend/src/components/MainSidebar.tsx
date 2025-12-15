@@ -8,6 +8,8 @@ import {
   Cog6ToothIcon,
   PlusIcon,
   ChevronRightIcon,
+  Bars3Icon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 
 interface Conversation {
@@ -19,6 +21,7 @@ interface Conversation {
 
 export default function MainSidebar() {
   const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [conversations] = useState<Conversation[]>([
     {
       id: "1",
@@ -71,8 +74,130 @@ export default function MainSidebar() {
 
   return (
     <>
-      {/* Main Sidebar */}
-      <div className="fixed left-0 top-0 h-screen w-16 bg-white border-r border-gray-200 flex flex-col items-center py-4 z-50">
+      {/* Hamburger Button - Mobile Only */}
+      <button
+        onClick={() => setIsMobileMenuOpen(true)}
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-md hover:bg-gray-50 transition-colors"
+        aria-label="Menu"
+      >
+        <Bars3Icon className="w-6 h-6 text-gray-700" />
+      </button>
+
+      {/* Mobile Drawer */}
+      <div
+        className={`lg:hidden fixed inset-y-0 left-0 w-64 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${
+          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {/* Mobile Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-xl">L</span>
+            </div>
+            <span className="font-semibold text-lg text-gray-900">Lucide</span>
+          </div>
+          <button
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="Fermer le menu"
+          >
+            <XMarkIcon className="w-6 h-6 text-gray-700" />
+          </button>
+        </div>
+
+        {/* Mobile Menu Content */}
+        <div className="p-4 space-y-2">
+          {/* New Chat Button */}
+          <button
+            className="w-full p-3 bg-teal-500 hover:bg-teal-600 text-white rounded-lg flex items-center justify-center gap-2 transition-colors font-medium"
+            onClick={() => {
+              window.location.reload();
+              setIsMobileMenuOpen(false);
+            }}
+          >
+            <PlusIcon className="w-5 h-5" />
+            Nouvelle conversation
+          </button>
+
+          {/* Menu Items */}
+          <div className="space-y-1 mt-4">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeSection === item.id;
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveSection(isActive ? null : item.id)}
+                  className={`w-full p-3 rounded-lg flex items-center gap-3 transition-all ${
+                    isActive
+                      ? "bg-teal-50 text-teal-600"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  <span className="font-medium">{item.label}</span>
+                  {item.count !== undefined && item.count > 0 && (
+                    <span className="ml-auto px-2 py-0.5 bg-teal-500 text-white text-xs rounded-full">
+                      {item.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active Section Content */}
+          {activeSection === "history" && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <h3 className="text-xs font-semibold text-gray-500 uppercase px-3 py-2">
+                Aujourd'hui
+              </h3>
+              {conversations
+                .filter((c) => c.date === "Aujourd'hui")
+                .map((conv) => (
+                  <button
+                    key={conv.id}
+                    className="w-full text-left p-3 hover:bg-gray-50 rounded-lg transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <div className="font-medium text-sm text-gray-900">
+                      {conv.title}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1 line-clamp-1">
+                      {conv.preview}
+                    </div>
+                  </button>
+                ))}
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Footer - User */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
+              <span className="text-white font-semibold text-sm">H</span>
+            </div>
+            <div>
+              <div className="font-medium text-sm text-gray-900">Henri</div>
+              <div className="text-xs text-gray-500">henri@example.com</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Backdrop */}
+      {isMobileMenuOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Main Sidebar - Desktop */}
+      <div className="hidden lg:flex fixed left-0 top-0 h-screen w-16 bg-white border-r border-gray-200 flex-col items-center py-4 z-50">
         {/* Logo */}
         <div className="mb-8">
           <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center">

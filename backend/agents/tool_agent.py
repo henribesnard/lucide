@@ -173,6 +173,18 @@ class ToolAgent:
             "classement_ligue": "Utilise le tool standings avec league_id et season (convertis le nom de ligue via le mapping).",
             "live_scores": "Si aucune ligue precisee, utilise live_fixtures; sinon fixtures_search live='all' + league_id.",
             "prochain_match_equipe": "Utilise search_team puis team_next_fixtures (count=1 par defaut).",
+            "stats_live": (
+                "CRITIQUE: 1) search_team equipe1, 2) search_team equipe2, "
+                "3) fixtures_search pour obtenir fixture_id, "
+                "4) OBLIGATOIREMENT appeler fixture_statistics avec le fixture_id. "
+                "NE PAS utiliser head_to_head ou autres endpoints - fixture_statistics contient toutes les stats (possession, tirs, corners, passes)."
+            ),
+            "stats_final": (
+                "CRITIQUE: 1) search_team equipe1, 2) search_team equipe2, "
+                "3) fixtures_search pour obtenir fixture_id, "
+                "4) OBLIGATOIREMENT appeler fixture_statistics avec le fixture_id. "
+                "NE PAS utiliser head_to_head ou autres endpoints - fixture_statistics contient toutes les stats (possession, tirs, corners, passes)."
+            ),
             "calendrier_matchs": (
                 "Resous league -> league_id meme pour '1ere division <pays>'. "
                 "Si date absente, prends aujourd'hui; season par defaut = saison en cours. "

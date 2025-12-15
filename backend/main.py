@@ -13,6 +13,7 @@ from backend.db.database import init_db
 from backend.auth.router import router as auth_router
 from backend.conversations.router import router as conversations_router
 from backend.context.context_manager import ContextManager
+from backend.context.circuit_breaker import circuit_breaker_manager
 
 # Logging configuration
 logging.basicConfig(
@@ -248,7 +249,7 @@ async def get_match_context(fixture_id: int):
         # Try to get existing context
         today = datetime.now().strftime("%Y%m%d")
         context_id = f"match_{fixture_id}_{today}"
-        context = context_manager.get_context(context_id)
+        context = await context_manager.get_context(context_id)
 
         if context:
             logger.info(f"Found existing context for match {fixture_id}")
@@ -272,7 +273,7 @@ async def get_match_context(fixture_id: int):
         )
 
         # Save to Redis
-        context_manager.save_context(context)
+        await context_manager.save_context(context)
 
         return {"context": context}
     except HTTPException:
@@ -299,7 +300,7 @@ async def get_league_context(league_id: int, season: Optional[int] = None):
 
         # Try to get existing context
         context_id = f"league_{league_id}_{season}"
-        context = context_manager.get_context(context_id)
+        context = await context_manager.get_context(context_id)
 
         if context:
             logger.info(f"Found existing context for league {league_id}")
@@ -321,7 +322,7 @@ async def get_league_context(league_id: int, season: Optional[int] = None):
         )
 
         # Save to Redis
-        context_manager.save_context(context)
+        await context_manager.save_context(context)
 
         return {"context": context}
     except HTTPException:
@@ -338,10 +339,228 @@ async def list_contexts():
         if not context_manager:
             raise HTTPException(status_code=500, detail="Context manager not initialized")
 
-        context_ids = context_manager.list_active_contexts()
+        context_ids = await context_manager.list_active_contexts()
         return {"contexts": context_ids, "count": len(context_ids)}
     except Exception as exc:
         logger.error(f"Error listing contexts: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+# ============================================================================
+# MONITORING & HEALTH ENDPOINTS
+# ============================================================================
+
+@app.get("/api/health", tags=["Monitoring"])
+async def health_check():
+    """
+    Health check endpoint.
+
+    Returns system health status including context manager and circuit breakers.
+    """
+    try:
+        health_status = {
+            "status": "healthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "services": {
+                "context_manager": "healthy" if context_manager else "unavailable",
+                "football_api": "healthy" if football_client else "unavailable"
+            }
+        }
+
+        # Check circuit breakers
+        circuit_states = circuit_breaker_manager.get_all_states()
+        unhealthy_circuits = [
+            name for name, state in circuit_states.items()
+            if state["state"] == "open"
+        ]
+
+        if unhealthy_circuits:
+            health_status["status"] = "degraded"
+            health_status["warnings"] = {
+                "circuit_breakers_open": unhealthy_circuits
+            }
+
+        return health_status
+
+    except Exception as exc:
+        logger.error(f"Health check failed: {exc}", exc_info=True)
+        return {
+            "status": "unhealthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "error": str(exc)
+        }
+
+
+@app.get("/api/circuit-breakers", tags=["Monitoring"])
+async def get_circuit_breakers():
+    """
+    Get status of all circuit breakers.
+
+    Returns detailed state of all active circuit breakers.
+    """
+    try:
+        states = circuit_breaker_manager.get_all_states()
+
+        # Add summary
+        summary = {
+            "total": len(states),
+            "closed": sum(1 for s in states.values() if s["state"] == "closed"),
+            "open": sum(1 for s in states.values() if s["state"] == "open"),
+            "half_open": sum(1 for s in states.values() if s["state"] == "half_open")
+        }
+
+        return {
+            "circuit_breakers": states,
+            "summary": summary,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+    except Exception as exc:
+        logger.error(f"Error getting circuit breakers: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.post("/api/circuit-breakers/reset", tags=["Monitoring"])
+async def reset_circuit_breakers():
+    """
+    Reset all circuit breakers (admin only).
+
+    WARNING: This should only be used for testing or emergency situations.
+    """
+    try:
+        circuit_breaker_manager.reset_all()
+        logger.warning("All circuit breakers have been reset via API")
+
+        return {
+            "status": "success",
+            "message": "All circuit breakers have been reset",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+    except Exception as exc:
+        logger.error(f"Error resetting circuit breakers: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/context/stats", tags=["Monitoring"])
+async def get_context_stats():
+    """
+    Get context system statistics.
+
+    Returns metrics about context usage, cache hits, etc.
+    """
+    try:
+        if not context_manager:
+            raise HTTPException(status_code=500, detail="Context manager not initialized")
+
+        context_ids = await context_manager.list_active_contexts()
+
+        # Basic stats
+        stats = {
+            "total_contexts": len(context_ids),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+        # Count by type
+        match_contexts = [cid for cid in context_ids if cid.startswith("match_")]
+        league_contexts = [cid for cid in context_ids if cid.startswith("league_")]
+
+        stats["by_type"] = {
+            "match": len(match_contexts),
+            "league": len(league_contexts)
+        }
+
+        return stats
+
+    except Exception as exc:
+        logger.error(f"Error getting context stats: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+# ============================================================================
+# LOCK MANAGEMENT ENDPOINTS
+# ============================================================================
+
+@app.get("/api/locks", tags=["Monitoring"])
+async def get_all_locks():
+    """
+    Get all active distributed locks.
+
+    Returns a list of all currently held locks with their details.
+    """
+    try:
+        if not context_manager or not context_manager.lock_manager:
+            raise HTTPException(status_code=500, detail="Lock manager not initialized")
+
+        locks = await context_manager.lock_manager.get_all_locks()
+
+        return {
+            "locks": locks,
+            "count": len(locks),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+    except Exception as exc:
+        logger.error(f"Error getting locks: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/locks/{resource}", tags=["Monitoring"])
+async def get_lock_info(resource: str):
+    """
+    Get information about a specific lock.
+
+    Args:
+        resource: The resource name (e.g., 'context:match_123_20251209')
+    """
+    try:
+        if not context_manager or not context_manager.lock_manager:
+            raise HTTPException(status_code=500, detail="Lock manager not initialized")
+
+        lock_info = await context_manager.lock_manager.get_lock_info(resource)
+
+        if not lock_info:
+            raise HTTPException(status_code=404, detail=f"Lock '{resource}' not found")
+
+        return lock_info
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"Error getting lock info: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.delete("/api/locks/{resource}", tags=["Monitoring"])
+async def force_release_lock(resource: str):
+    """
+    Force release a lock (admin only).
+
+    WARNING: This should only be used in case of deadlock or emergency.
+
+    Args:
+        resource: The resource name to unlock
+    """
+    try:
+        if not context_manager or not context_manager.lock_manager:
+            raise HTTPException(status_code=500, detail="Lock manager not initialized")
+
+        released = await context_manager.lock_manager.force_release(resource)
+
+        if released:
+            logger.warning(f"Lock forcibly released via API: {resource}")
+            return {
+                "status": "success",
+                "message": f"Lock '{resource}' has been forcibly released",
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        else:
+            raise HTTPException(status_code=404, detail=f"Lock '{resource}' not found")
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"Error releasing lock: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc))
 
 

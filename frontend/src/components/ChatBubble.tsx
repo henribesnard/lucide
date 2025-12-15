@@ -7,6 +7,7 @@ import {
   MagnifyingGlassIcon,
   MapPinIcon,
   ChevronDownIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import ContextHeader from "./ContextHeader";
 
@@ -454,36 +455,30 @@ export default function ChatBubble() {
                         e.stopPropagation();
                         setShowCountryDropdown(!showCountryDropdown);
                       }}
-                      className="px-3 py-2 text-gray-700 hover:bg-teal-50 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium max-w-[140px]"
+                      className="p-2 text-gray-700 hover:bg-teal-50 rounded-lg transition-colors flex items-center gap-1.5"
                       title={selectedCountry ? selectedCountry.name : "Pays"}
                     >
                       {selectedCountry ? (
-                        <>
-                          {selectedCountry.name.toLowerCase() === 'world' ? (
-                            <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM4.332 8.027a6.012 6.012 0 011.912-2.706C6.512 5.73 6.974 6 7.5 6A1.5 1.5 0 019 7.5V8a2 2 0 004 0 2 2 0 011.523-1.943A5.977 5.977 0 0116 10c0 .34-.028.675-.083 1H15a2 2 0 00-2 2v2.197A5.973 5.973 0 0110 16v-2a2 2 0 00-2-2 2 2 0 01-2-2 2 2 0 00-1.668-1.973z" clipRule="evenodd" />
-                            </svg>
-                          ) : (
-                            <img
-                              src={selectedCountry.flag}
-                              alt={selectedCountry.name}
-                              className="w-5 h-3 object-contain flex-shrink-0"
-                            />
-                          )}
-                          <span className="hidden sm:inline truncate">{selectedCountry.name}</span>
-                        </>
+                        selectedCountry.name.toLowerCase() === 'world' ? (
+                          <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM4.332 8.027a6.012 6.012 0 011.912-2.706C6.512 5.73 6.974 6 7.5 6A1.5 1.5 0 019 7.5V8a2 2 0 004 0 2 2 0 011.523-1.943A5.977 5.977 0 0116 10c0 .34-.028.675-.083 1H15a2 2 0 00-2 2v2.197A5.973 5.973 0 0110 16v-2a2 2 0 00-2-2 2 2 0 01-2-2 2 2 0 00-1.668-1.973z" clipRule="evenodd" />
+                          </svg>
+                        ) : (
+                          <img
+                            src={selectedCountry.flag}
+                            alt={selectedCountry.name}
+                            className="w-5 h-3 object-contain flex-shrink-0"
+                          />
+                        )
                       ) : (
-                        <>
-                          <MapPinIcon className="w-5 h-5 flex-shrink-0" />
-                          <span className="hidden sm:inline">Pays</span>
-                        </>
+                        <MapPinIcon className="w-5 h-5 flex-shrink-0" />
                       )}
-                      <ChevronDownIcon className="w-4 h-4 flex-shrink-0" />
+                      <ChevronDownIcon className="w-3.5 h-3.5 flex-shrink-0" />
                     </button>
 
                     {/* Country Dropdown */}
                     {showCountryDropdown && (
-                      <div className="absolute left-0 top-full mt-2 w-72 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden" style={{ maxHeight: "260px" }}>
+                      <div className="absolute left-0 top-full mt-2 w-72 bg-white border border-gray-200 rounded-lg shadow-xl z-[150] overflow-hidden" style={{ maxHeight: "260px" }}>
                         <div className="p-2 border-b">
                           <input
                             type="text"
@@ -541,19 +536,27 @@ export default function ChatBubble() {
                           e.stopPropagation();
                           setShowLeagueDropdown(!showLeagueDropdown);
                         }}
-                        className="px-3 py-2 text-gray-700 hover:bg-teal-50 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium max-w-[180px]"
+                        className="p-2 text-gray-700 hover:bg-teal-50 rounded-lg transition-colors flex items-center gap-1.5"
                         title={selectedLeague ? selectedLeague.league.name : "Ligue"}
                       >
-                        <span className="hidden sm:inline truncate">
-                          {selectedLeague ? selectedLeague.league.name : "Ligue"}
-                        </span>
-                        <span className="sm:hidden">🏆</span>
-                        <ChevronDownIcon className="w-4 h-4 flex-shrink-0" />
+                        {selectedLeague ? (
+                          <img
+                            src={selectedLeague.league.logo || ''}
+                            alt={selectedLeague.league.name}
+                            className="w-5 h-5 object-contain flex-shrink-0"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <span>🏆</span>
+                        )}
+                        <ChevronDownIcon className="w-3.5 h-3.5 flex-shrink-0" />
                       </button>
 
                       {/* League Dropdown */}
                       {showLeagueDropdown && (
-                        <div className="absolute left-0 top-full mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden" style={{ maxHeight: "260px" }}>
+                        <div className="absolute left-0 top-full mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-[200] overflow-hidden" style={{ maxHeight: "260px" }}>
                           <div className="p-2 border-b">
                             <input
                               type="text"
@@ -623,21 +626,38 @@ export default function ChatBubble() {
                           e.stopPropagation();
                           setShowMatchDropdown(!showMatchDropdown);
                         }}
-                        className="px-3 py-2 text-gray-700 hover:bg-teal-50 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium max-w-[220px]"
+                        className="px-3 py-2 text-gray-700 hover:bg-teal-50 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
                         title={selectedMatch ? `${selectedMatch.teams.home.name} vs ${selectedMatch.teams.away.name}` : "Match"}
                       >
-                        <span className="hidden sm:inline truncate">
-                          {selectedMatch
-                            ? `${selectedMatch.teams.home.name} vs ${selectedMatch.teams.away.name}`
-                            : "Match"}
-                        </span>
-                        <span className="sm:hidden">⚽</span>
+                        {selectedMatch ? (
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <img
+                              src={selectedMatch.teams.home.logo || ''}
+                              alt={selectedMatch.teams.home.name}
+                              className="w-6 h-6 object-contain"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                            <span className="text-xs font-semibold text-gray-500">vs</span>
+                            <img
+                              src={selectedMatch.teams.away.logo || ''}
+                              alt={selectedMatch.teams.away.name}
+                              className="w-6 h-6 object-contain"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <span>Match</span>
+                        )}
                         <ChevronDownIcon className="w-4 h-4 flex-shrink-0" />
                       </button>
 
                       {/* Match Dropdown */}
                       {showMatchDropdown && (
-                        <div className="absolute left-0 top-full mt-2 w-96 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden" style={{ maxHeight: "310px" }}>
+                        <div className="absolute left-0 top-full mt-2 w-96 bg-white border border-gray-200 rounded-lg shadow-xl z-[250] overflow-hidden" style={{ maxHeight: "310px" }}>
                           <div className="p-2 border-b space-y-2">
                             <input
                               type="text"
@@ -793,11 +813,12 @@ export default function ChatBubble() {
                   onKeyPress={handleKeyPress}
                   placeholder="Posez votre question..."
                   rows={1}
-                  className="w-full pr-28 py-4 bg-transparent focus:outline-none resize-none text-gray-900 placeholder-gray-400"
+                  className="w-full py-4 bg-transparent focus:outline-none resize-none text-gray-900 placeholder-gray-400 text-sm sm:text-base"
                   style={{
                     minHeight: "56px",
                     maxHeight: "200px",
-                    paddingLeft: selectedMatch ? "580px" : selectedLeague ? "360px" : selectedCountry ? "180px" : "160px"
+                    paddingLeft: selectedMatch ? "220px" : selectedLeague ? "150px" : selectedCountry ? "105px" : "16px",
+                    paddingRight: "100px"
                   }}
                 />
 
@@ -927,11 +948,405 @@ export default function ChatBubble() {
           </div>
 
           {/* Input Area - Same as welcome screen */}
-          <div className="px-6 py-6 border-t border-gray-200 bg-white/80 backdrop-blur-sm sticky bottom-0">
+          <div className="px-3 sm:px-6 py-4 sm:py-6 border-t border-gray-200 bg-white/80 backdrop-blur-sm sticky bottom-0">
             <div className="max-w-4xl mx-auto">
               <div className="relative bg-white border-2 border-gray-300 rounded-2xl shadow-sm focus-within:border-teal-500 focus-within:shadow-md transition-all">
-                {/* Same dropdown structure as welcome screen */}
-                {/* ... (same code as above) */}
+                {/* Left Icons - Tools with Dropdowns */}
+                <div className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 flex items-center gap-0.5 sm:gap-1">
+                  {/* Country Selector */}
+                  <div className="relative" ref={countryDropdownRef}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowCountryDropdown(!showCountryDropdown);
+                      }}
+                      className="p-1.5 sm:p-2 text-gray-700 hover:bg-teal-50 rounded-lg transition-colors flex items-center gap-1 sm:gap-1.5"
+                      title={selectedCountry ? selectedCountry.name : "Pays"}
+                    >
+                      {selectedCountry ? (
+                        selectedCountry.name.toLowerCase() === 'world' ? (
+                          <svg className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM4.332 8.027a6.012 6.012 0 011.912-2.706C6.512 5.73 6.974 6 7.5 6A1.5 1.5 0 019 7.5V8a2 2 0 004 0 2 2 0 011.523-1.943A5.977 5.977 0 0116 10c0 .34-.028.675-.083 1H15a2 2 0 00-2 2v2.197A5.973 5.973 0 0110 16v-2a2 2 0 00-2-2 2 2 0 01-2-2 2 2 0 00-1.668-1.973z" clipRule="evenodd" />
+                          </svg>
+                        ) : (
+                          <img
+                            src={selectedCountry.flag}
+                            alt={selectedCountry.name}
+                            className="w-4 h-2.5 sm:w-5 sm:h-3 object-contain flex-shrink-0"
+                          />
+                        )
+                      ) : (
+                        <MapPinIcon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                      )}
+                      <ChevronDownIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
+                    </button>
+
+                    {/* Country Dropdown - Same as welcome screen */}
+                    {showCountryDropdown && (
+                      <div className="absolute left-0 bottom-full mb-2 w-72 bg-white border border-gray-200 rounded-lg shadow-xl z-[150] overflow-hidden" style={{ maxHeight: "260px" }}>
+                        <div className="p-2 border-b">
+                          <input
+                            type="text"
+                            value={countrySearch}
+                            onChange={(e) => setCountrySearch(e.target.value)}
+                            placeholder="Rechercher un pays..."
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                            onMouseDown={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                        <div
+                          className="overflow-y-auto scrollbar-thin"
+                          style={{ maxHeight: "200px" }}
+                          onMouseDown={(e) => e.stopPropagation()}
+                        >
+                          {filteredCountries.map((country, index) => (
+                            <button
+                              key={`${country.code}-${index}`}
+                              onClick={() => {
+                                setSelectedCountry(country);
+                                setSelectedLeague(null);
+                                setSelectedMatch(null);
+                                setShowCountryDropdown(false);
+                                setCountrySearch("");
+                              }}
+                              className="w-full px-4 py-2 text-left hover:bg-teal-50 flex items-center gap-3 transition-colors"
+                            >
+                              {country.name.toLowerCase() === 'world' ? (
+                                <svg className="w-6 h-6 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM4.332 8.027a6.012 6.012 0 011.912-2.706C6.512 5.73 6.974 6 7.5 6A1.5 1.5 0 019 7.5V8a2 2 0 004 0 2 2 0 011.523-1.943A5.977 5.977 0 0116 10c0 .34-.028.675-.083 1H15a2 2 0 00-2 2v2.197A5.973 5.973 0 0110 16v-2a2 2 0 00-2-2 2 2 0 01-2-2 2 2 0 00-1.668-1.973z" clipRule="evenodd" />
+                                </svg>
+                              ) : country.flag ? (
+                                <img
+                                  src={country.flag}
+                                  alt={country.name}
+                                  className="w-6 h-4 object-contain"
+                                />
+                              ) : (
+                                <div className="w-6 h-4 bg-gray-200 rounded" />
+                              )}
+                              <span className="text-sm">{country.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* League Selector */}
+                  {selectedCountry && (
+                    <div className="relative" ref={leagueDropdownRef}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowLeagueDropdown(!showLeagueDropdown);
+                        }}
+                        className="p-1.5 sm:p-2 text-gray-700 hover:bg-teal-50 rounded-lg transition-colors flex items-center gap-1 sm:gap-1.5"
+                        title={selectedLeague ? selectedLeague.league.name : "Ligue"}
+                      >
+                        {selectedLeague ? (
+                          <img
+                            src={selectedLeague.league.logo || ''}
+                            alt={selectedLeague.league.name}
+                            className="w-4 h-4 sm:w-5 sm:h-5 object-contain flex-shrink-0"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <span className="text-base sm:text-lg">🏆</span>
+                        )}
+                        <ChevronDownIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
+                      </button>
+
+                      {/* League Dropdown - Same as welcome screen */}
+                      {showLeagueDropdown && (
+                        <div className="absolute left-0 bottom-full mb-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-[200] overflow-hidden" style={{ maxHeight: "260px" }}>
+                          <div className="p-2 border-b">
+                            <input
+                              type="text"
+                              value={leagueSearch}
+                              onChange={(e) => setLeagueSearch(e.target.value)}
+                              placeholder="Rechercher une ligue..."
+                              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                              onMouseDown={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                          <div
+                            className="overflow-y-auto scrollbar-thin"
+                            style={{ maxHeight: "200px" }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                          >
+                            {filteredLeagues.map((league) => (
+                              <button
+                                key={league.league.id}
+                                onClick={() => {
+                                  setSelectedLeague(league);
+                                  setSelectedMatch(null);
+                                  setShowLeagueDropdown(false);
+                                  setLeagueSearch("");
+                                }}
+                                className="w-full px-4 py-2 text-left hover:bg-teal-50 transition-colors"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <img
+                                    src={league.league.logo || ''}
+                                    alt={league.league.name}
+                                    className="w-6 h-6 object-contain"
+                                    onError={(e) => {
+                                      e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24"%3E%3Crect width="24" height="24" fill="%23e5e7eb" rx="4"/%3E%3C/svg%3E';
+                                    }}
+                                  />
+                                  <div className="flex flex-col">
+                                    <div className="font-medium text-sm flex items-center gap-2">
+                                      {league.country.flag && (
+                                        <img
+                                          src={league.country.flag}
+                                          alt={league.country.name}
+                                          className="w-4 h-3 object-contain"
+                                          onError={(e) => {
+                                            e.currentTarget.style.display = 'none';
+                                          }}
+                                        />
+                                      )}
+                                      <span>{league.league.name}</span>
+                                    </div>
+                                    <div className="text-xs text-gray-500">{league.country.name}</div>
+                                  </div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Match Selector */}
+                  {selectedLeague && (
+                    <div className="relative" ref={matchDropdownRef}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowMatchDropdown(!showMatchDropdown);
+                        }}
+                        className="p-1.5 sm:p-2 text-gray-700 hover:bg-teal-50 rounded-lg transition-colors flex items-center gap-1 sm:gap-1.5"
+                        title={selectedMatch ? `${selectedMatch.teams.home.name} vs ${selectedMatch.teams.away.name}` : "Match"}
+                      >
+                        {selectedMatch ? (
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <img
+                              src={selectedMatch.teams.home.logo || ''}
+                              alt={selectedMatch.teams.home.name}
+                              className="w-4 h-4 sm:w-5 sm:h-5 object-contain"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                            <span className="text-xs font-semibold text-gray-500">vs</span>
+                            <img
+                              src={selectedMatch.teams.away.logo || ''}
+                              alt={selectedMatch.teams.away.name}
+                              className="w-4 h-4 sm:w-5 sm:h-5 object-contain"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-sm">⚽</span>
+                        )}
+                        <ChevronDownIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
+                      </button>
+
+                      {/* Match Dropdown - Same structure as welcome screen */}
+                      {showMatchDropdown && (
+                        <div className="absolute left-0 bottom-full mb-2 w-80 sm:w-96 bg-white border border-gray-200 rounded-lg shadow-xl z-[250] overflow-hidden" style={{ maxHeight: "310px" }}>
+                          <div className="p-2 border-b space-y-2">
+                            <input
+                              type="text"
+                              value={matchSearch}
+                              onChange={(e) => setMatchSearch(e.target.value)}
+                              placeholder="Rechercher un match..."
+                              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                              onMouseDown={(e) => e.stopPropagation()}
+                            />
+                            <input
+                              type="date"
+                              value={selectedDate}
+                              onChange={(e) => setSelectedDate(e.target.value)}
+                              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                              onMouseDown={(e) => e.stopPropagation()}
+                            />
+                            {/* Status Filter */}
+                            <div className="flex gap-1" onMouseDown={(e) => e.stopPropagation()}>
+                              <button
+                                onClick={() => setSelectedStatus("all")}
+                                className={`flex-1 px-2 py-1 text-xs rounded ${
+                                  selectedStatus === "all"
+                                    ? "bg-teal-500 text-white"
+                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                }`}
+                              >
+                                Tous
+                              </button>
+                              <button
+                                onClick={() => setSelectedStatus("live")}
+                                className={`flex-1 px-2 py-1 text-xs rounded ${
+                                  selectedStatus === "live"
+                                    ? "bg-red-500 text-white"
+                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                }`}
+                              >
+                                🔴 Live
+                              </button>
+                              <button
+                                onClick={() => setSelectedStatus("finished")}
+                                className={`flex-1 px-2 py-1 text-xs rounded ${
+                                  selectedStatus === "finished"
+                                    ? "bg-gray-600 text-white"
+                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                }`}
+                              >
+                                Terminé
+                              </button>
+                              <button
+                                onClick={() => setSelectedStatus("upcoming")}
+                                className={`flex-1 px-2 py-1 text-xs rounded ${
+                                  selectedStatus === "upcoming"
+                                    ? "bg-blue-500 text-white"
+                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                }`}
+                              >
+                                À venir
+                              </button>
+                            </div>
+                          </div>
+                          <div
+                            className="overflow-y-auto scrollbar-thin"
+                            style={{ maxHeight: "190px" }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                          >
+                            {filteredMatches.length === 0 ? (
+                              <div className="p-4 text-center text-sm text-gray-500">
+                                Aucun match pour cette date
+                              </div>
+                            ) : (
+                              filteredMatches.map((match) => {
+                                const getStatusBadge = () => {
+                                  const status = match.fixture.status.short;
+                                  if (isLiveMatch(status)) {
+                                    return <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-semibold rounded animate-pulse">LIVE</span>;
+                                  } else if (status === "FT" || status === "AET" || status === "PEN") {
+                                    return <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded">Terminé</span>;
+                                  } else {
+                                    return <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded">À venir</span>;
+                                  }
+                                };
+
+                                return (
+                                  <button
+                                    key={match.fixture.id}
+                                    onClick={() => {
+                                      setSelectedMatch(match);
+                                      setShowMatchDropdown(false);
+                                      setMatchSearch("");
+                                    }}
+                                    className="w-full px-4 py-3 text-left hover:bg-teal-50 transition-colors border-b border-gray-100 last:border-0"
+                                  >
+                                    <div className="flex items-center gap-2 sm:gap-3">
+                                      {/* Home Team */}
+                                      <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+                                        <img
+                                          src={match.teams.home.logo}
+                                          alt={match.teams.home.name}
+                                          className="w-5 h-5 sm:w-6 sm:h-6 object-contain flex-shrink-0"
+                                        />
+                                        <span className="font-medium text-xs sm:text-sm truncate">{match.teams.home.name}</span>
+                                      </div>
+
+                                      {/* Score or Time */}
+                                      <div className="flex flex-col items-center gap-1 px-2 flex-shrink-0">
+                                        {match.goals.home !== null ? (
+                                          <div className="flex flex-col items-center gap-0.5">
+                                            <span className="text-base sm:text-lg font-bold text-teal-600">
+                                              {match.goals.home} - {match.goals.away}
+                                            </span>
+                                            {isLiveMatch(match.fixture.status.short) && (
+                                              <span className="text-xs font-semibold text-red-600">
+                                                {getMatchTime(match.fixture.id, match.fixture.status)}
+                                              </span>
+                                            )}
+                                          </div>
+                                        ) : (
+                                          <span className="text-xs text-gray-500">
+                                            {new Date(match.fixture.date).toLocaleTimeString("fr-FR", {
+                                              hour: "2-digit",
+                                              minute: "2-digit",
+                                            })}
+                                          </span>
+                                        )}
+                                        {getStatusBadge()}
+                                      </div>
+
+                                      {/* Away Team */}
+                                      <div className="flex items-center gap-1.5 sm:gap-2 flex-1 justify-end min-w-0">
+                                        <span className="font-medium text-xs sm:text-sm truncate">{match.teams.away.name}</span>
+                                        <img
+                                          src={match.teams.away.logo}
+                                          alt={match.teams.away.name}
+                                          className="w-5 h-5 sm:w-6 sm:h-6 object-contain flex-shrink-0"
+                                        />
+                                      </div>
+                                    </div>
+                                  </button>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Text Input */}
+                <textarea
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Posez votre question..."
+                  rows={1}
+                  className="w-full py-3 sm:py-4 bg-transparent focus:outline-none resize-none text-gray-900 placeholder-gray-400 text-sm sm:text-base"
+                  style={{
+                    minHeight: "48px",
+                    maxHeight: "200px",
+                    paddingLeft: selectedMatch ? "210px" : selectedLeague ? "140px" : selectedCountry ? "100px" : "12px",
+                    paddingRight: "90px"
+                  }}
+                />
+
+                {/* Right Icons - Actions */}
+                <div className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 sm:gap-2">
+                  <button
+                    type="button"
+                    className="p-1.5 sm:p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors hidden sm:block"
+                    title="Commande vocale"
+                  >
+                    <MicrophoneIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </button>
+
+                  <button
+                    onClick={handleSend}
+                    disabled={!inputValue.trim() || isLoading}
+                    className="p-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                    title="Envoyer"
+                  >
+                    <PaperAirplaneIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>

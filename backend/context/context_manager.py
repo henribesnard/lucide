@@ -8,7 +8,7 @@ import json
 import logging
 from datetime import datetime
 import sys
-import redis
+import redis.asyncio as redis
 
 from backend.context.context_types import (
     Context,
@@ -22,6 +22,7 @@ from backend.context.context_types import (
 from backend.context.status_classifier import StatusClassifier
 from backend.context.intent_classifier import IntentClassifier
 from backend.context.endpoint_selector import EndpointSelector
+from backend.context.distributed_lock import LockManager, DistributedLockError
 from backend.config import settings
 
 logger = logging.getLogger(__name__)
@@ -46,16 +47,20 @@ class ContextManager:
         redis_url = redis_url or getattr(settings, "REDIS_URL", "redis://localhost:6379")
         try:
             self.redis_client = redis.from_url(redis_url, decode_responses=True)
-            self.redis_client.ping()
             logger.info(f"Connected to Redis at {redis_url}")
+
+            # Initialize lock manager for concurrency control
+            self.lock_manager = LockManager(self.redis_client)
+            logger.info("Lock manager initialized")
         except Exception as e:
             logger.error(f"Failed to connect to Redis: {e}")
             self.redis_client = None
+            self.lock_manager = None
 
     async def close(self):
         """Close the Redis connection."""
         if self.redis_client:
-            self.redis_client.close()
+            await self.redis_client.close()
 
     def create_match_context(
         self,
@@ -152,7 +157,7 @@ class ContextManager:
 
         return context
 
-    def enrich_context(
+    async def enrich_context(
         self,
         context: Context,
         question: str,
@@ -163,6 +168,9 @@ class ContextManager:
         """
         Enrich context with a new question and its associated API data.
 
+        Uses distributed locks to prevent race conditions when multiple
+        users modify the same context simultaneously.
+
         Args:
             context: The context to enrich
             question: The user question
@@ -172,34 +180,98 @@ class ContextManager:
 
         Returns:
             Updated context
+
+        Raises:
+            DistributedLockError: If lock cannot be acquired
         """
-        # Create user question entry
-        user_question: UserQuestion = {
-            "question": question,
-            "intent": intent,
-            "timestamp": datetime.now().isoformat(),
-            "endpoints_used": endpoints_used,
-        }
+        context_id = context["context_id"]
 
-        # Add question to history
-        context["user_questions"].append(user_question)
+        # Use distributed lock to prevent race conditions
+        if self.lock_manager:
+            try:
+                async with self.lock_manager.lock(
+                    resource=f"context:{context_id}",
+                    ttl=10,  # 10 seconds should be enough for enrichment
+                    retry_times=3,
+                    retry_delay=0.2
+                ):
+                    # Re-fetch context from Redis to get latest version
+                    latest_context = await self.get_context(context_id)
+                    if latest_context:
+                        context = latest_context
 
-        # Merge new API data into collected data (avoid duplicates)
-        for key, value in api_data.items():
-            if key not in context["data_collected"]:
-                context["data_collected"][key] = value
+                    # Create user question entry
+                    user_question: UserQuestion = {
+                        "question": question,
+                        "intent": intent,
+                        "timestamp": datetime.now().isoformat(),
+                        "endpoints_used": endpoints_used,
+                    }
 
-        # Update context metadata
-        context["updated_at"] = datetime.now().isoformat()
+                    # Add question to history
+                    context["user_questions"].append(user_question)
 
-        # Recalculate size
-        context["context_size"] = sys.getsizeof(json.dumps(context))
+                    # Merge new API data into collected data (avoid duplicates)
+                    for key, value in api_data.items():
+                        if key not in context["data_collected"]:
+                            context["data_collected"][key] = value
 
-        # Trim if size exceeded
-        if context["context_size"] > context["max_context_size"]:
-            context = self._trim_context(context)
+                    # Update context metadata
+                    context["updated_at"] = datetime.now().isoformat()
 
-        return context
+                    # Recalculate size
+                    context["context_size"] = sys.getsizeof(json.dumps(context))
+
+                    # Trim if size exceeded
+                    if context["context_size"] > context["max_context_size"]:
+                        context = self._trim_context(context)
+
+                    # Save updated context back to Redis
+                    await self.save_context(context)
+
+                    logger.info(
+                        f"Context enriched with lock: {context_id} "
+                        f"(intent={intent}, endpoints={len(endpoints_used)})"
+                    )
+
+                    return context
+
+            except DistributedLockError as e:
+                logger.error(f"Failed to acquire lock for context enrichment: {e}")
+                raise
+        else:
+            # Fallback to non-locked enrichment if lock manager unavailable
+            logger.warning(
+                f"Lock manager unavailable, enriching context without lock: {context_id}"
+            )
+
+            # Create user question entry
+            user_question: UserQuestion = {
+                "question": question,
+                "intent": intent,
+                "timestamp": datetime.now().isoformat(),
+                "endpoints_used": endpoints_used,
+            }
+
+            # Add question to history
+            context["user_questions"].append(user_question)
+
+            # Merge new API data into collected data (avoid duplicates)
+            for key, value in api_data.items():
+                if key not in context["data_collected"]:
+                    context["data_collected"][key] = value
+
+            # Update context metadata
+            context["updated_at"] = datetime.now().isoformat()
+
+            # Recalculate size
+            context["context_size"] = sys.getsizeof(json.dumps(context))
+
+            # Trim if size exceeded
+            if context["context_size"] > context["max_context_size"]:
+                context = self._trim_context(context)
+
+            return context
 
     def _trim_context(self, context: Context) -> Context:
         """
@@ -221,7 +293,7 @@ class ContextManager:
         logger.info(f"Context trimmed to size: {context['context_size']}")
         return context
 
-    def save_context(self, context: Context) -> bool:
+    async def save_context(self, context: Context) -> bool:
         """
         Save context to Redis.
 
@@ -237,7 +309,7 @@ class ContextManager:
 
         try:
             context_json = json.dumps(context)
-            self.redis_client.setex(
+            await self.redis_client.setex(
                 context["context_id"],
                 self.CONTEXT_TTL,
                 context_json
@@ -248,7 +320,7 @@ class ContextManager:
             logger.error(f"Failed to save context to Redis: {e}")
             return False
 
-    def get_context(self, context_id: str) -> Optional[Context]:
+    async def get_context(self, context_id: str) -> Optional[Context]:
         """
         Retrieve context from Redis.
 
@@ -263,7 +335,7 @@ class ContextManager:
             return None
 
         try:
-            context_json = self.redis_client.get(context_id)
+            context_json = await self.redis_client.get(context_id)
             if context_json:
                 context = json.loads(context_json)
                 logger.info(f"Retrieved context {context_id} from Redis")
@@ -275,7 +347,7 @@ class ContextManager:
             logger.error(f"Failed to retrieve context from Redis: {e}")
             return None
 
-    def delete_context(self, context_id: str) -> bool:
+    async def delete_context(self, context_id: str) -> bool:
         """
         Delete context from Redis.
 
@@ -290,7 +362,7 @@ class ContextManager:
             return False
 
         try:
-            deleted = self.redis_client.delete(context_id)
+            deleted = await self.redis_client.delete(context_id)
             if deleted:
                 logger.info(f"Deleted context {context_id} from Redis")
                 return True
@@ -301,7 +373,7 @@ class ContextManager:
             logger.error(f"Failed to delete context from Redis: {e}")
             return False
 
-    def list_active_contexts(self) -> List[str]:
+    async def list_active_contexts(self) -> List[str]:
         """
         List all active context IDs in Redis.
 
@@ -313,10 +385,36 @@ class ContextManager:
             return []
 
         try:
-            # Get all keys matching our context patterns
-            match_keys = self.redis_client.keys("match_*")
-            league_keys = self.redis_client.keys("league_*")
-            all_keys = match_keys + league_keys
+            # Use scan instead of keys for better performance
+            all_keys = []
+            cursor = 0
+
+            # Scan for match contexts
+            while True:
+                cursor, keys = await self.redis_client.scan(
+                    cursor=cursor,
+                    match="match_*",
+                    count=100
+                )
+                all_keys.extend([k.decode() if isinstance(k, bytes) else k for k in keys])
+                if cursor == 0:
+                    break
+
+            # Scan for league contexts
+            cursor = 0
+            while True:
+                cursor, keys = await self.redis_client.scan(
+                    cursor=cursor,
+                    match="league_*",
+                    count=100
+                )
+                all_keys.extend([k.decode() if isinstance(k, bytes) else k for k in keys])
+                if cursor == 0:
+                    break
+
+            # Filter out lock keys
+            all_keys = [k for k in all_keys if not k.startswith("lock:")]
+
             logger.info(f"Found {len(all_keys)} active contexts")
             return all_keys
         except Exception as e:
