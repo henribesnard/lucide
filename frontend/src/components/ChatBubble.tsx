@@ -10,6 +10,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import ContextHeader from "./ContextHeader";
+import ContextBar from "./ContextBar";
 
 interface Message {
   id: string;
@@ -426,7 +427,7 @@ export default function ChatBubble() {
   return (
     <div className="flex flex-col min-h-screen bg-white">
       {showWelcome ? (
-        /* Welcome Screen - Top aligned */
+        <>{/* Welcome Screen - Top aligned */}
         <div className="flex-1 flex flex-col items-center px-6 py-12 pt-20">
           <div className="w-full max-w-4xl text-center">
             {/* Logo and Title */}
@@ -444,9 +445,9 @@ export default function ChatBubble() {
 
             {/* Input Area with integrated dropdowns */}
             <div className="relative">
-              <div className="relative bg-white border-2 border-gray-300 rounded-2xl shadow-sm focus-within:border-teal-500 focus-within:shadow-lg transition-all">
-                {/* Left Icons - Tools with Dropdowns */}
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              <div className="flex flex-col bg-white border-2 border-gray-300 rounded-2xl shadow-sm focus-within:border-teal-500 focus-within:shadow-lg transition-all">
+                {/* Left Icons - Tools with Dropdowns - HIDDEN */}
+                <div className="hidden absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
                   {/* Country Selector */}
                   <div className="relative" ref={countryDropdownRef}>
                     <button
@@ -817,7 +818,7 @@ export default function ChatBubble() {
                   style={{
                     minHeight: "56px",
                     maxHeight: "200px",
-                    paddingLeft: selectedMatch ? "220px" : selectedLeague ? "150px" : selectedCountry ? "105px" : "16px",
+                    paddingLeft: "16px",
                     paddingRight: "100px"
                   }}
                 />
@@ -841,13 +842,24 @@ export default function ChatBubble() {
                     <PaperAirplaneIcon className="w-5 h-5" />
                   </button>
                 </div>
+
+                {/* Context Bar - Below textarea, inside bubble */}
+                <ContextBar
+                  country={selectedCountry}
+                  league={selectedLeague}
+                  match={selectedMatch}
+                  onCountryClick={() => setShowCountryDropdown(true)}
+                  onLeagueClick={() => setShowLeagueDropdown(true)}
+                  onMatchClick={() => setShowMatchDropdown(true)}
+                />
               </div>
 
             </div>
           </div>
         </div>
+        </>
       ) : (
-        /* Messages View */
+        <>{/* Messages View */}
         <div className="flex flex-col h-screen">
           {/* Header */}
           <div className="px-6 py-4 border-b border-gray-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
@@ -950,9 +962,11 @@ export default function ChatBubble() {
           {/* Input Area - Same as welcome screen */}
           <div className="px-3 sm:px-6 py-4 sm:py-6 border-t border-gray-200 bg-white/80 backdrop-blur-sm sticky bottom-0">
             <div className="max-w-4xl mx-auto">
-              <div className="relative bg-white border-2 border-gray-300 rounded-2xl shadow-sm focus-within:border-teal-500 focus-within:shadow-md transition-all">
-                {/* Left Icons - Tools with Dropdowns */}
-                <div className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 flex items-center gap-0.5 sm:gap-1">
+              <div className="flex flex-col bg-white border-2 border-gray-300 rounded-2xl shadow-sm focus-within:border-teal-500 focus-within:shadow-md transition-all">
+                {/* Textarea Container */}
+                <div className="relative">
+                  {/* Left Icons - Tools with Dropdowns */}
+                  <div className="hidden absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 flex items-center gap-0.5 sm:gap-1">
                   {/* Country Selector */}
                   <div className="relative" ref={countryDropdownRef}>
                     <button
@@ -1323,7 +1337,7 @@ export default function ChatBubble() {
                   style={{
                     minHeight: "48px",
                     maxHeight: "200px",
-                    paddingLeft: selectedMatch ? "210px" : selectedLeague ? "140px" : selectedCountry ? "100px" : "12px",
+                    paddingLeft: "12px",
                     paddingRight: "90px"
                   }}
                 />
@@ -1348,9 +1362,21 @@ export default function ChatBubble() {
                   </button>
                 </div>
               </div>
+
+              {/* Context Bar - Below textarea, inside bubble */}
+              <ContextBar
+                country={selectedCountry}
+                league={selectedLeague}
+                match={selectedMatch}
+                onCountryClick={() => setShowCountryDropdown(true)}
+                onLeagueClick={() => setShowLeagueDropdown(true)}
+                onMatchClick={() => setShowMatchDropdown(true)}
+              />
+            </div>
             </div>
           </div>
         </div>
+        </>
       )}
     </div>
   );

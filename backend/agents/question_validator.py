@@ -13,6 +13,7 @@ from typing import List, Dict, Any, Optional
 from enum import Enum
 from datetime import datetime, date
 from backend.monitoring.autonomous_agents_metrics import logger
+from backend.agents.context_types import StructuredContext, Zone, ZoneType
 
 
 class QuestionType(Enum):
@@ -195,13 +196,13 @@ class QuestionValidator:
             'score', 'match', 'team', 'player', 'against'
         ]
 
-    async def validate(self, question: str, context: Dict[str, Any] = None) -> ValidationResult:
+    async def validate(self, question: str, context: Optional[StructuredContext] = None) -> ValidationResult:
         """
         Validate a question and extract entities.
 
         Args:
             question: User's question
-            context: Optional context (conversation history, user preferences)
+            context: Structured context (zone, league, fixture)
 
         Returns:
             ValidationResult with extracted entities and validation status
@@ -213,11 +214,15 @@ class QuestionValidator:
             # Extract entities
             entities = self._extract_entities(question)
 
+            # Merge context into entities (context has priority)
+            if context:
+                entities = self._merge_context_into_entities(context, entities)
+
             # Classify question type
             question_type, confidence = self._classify_question_type(question, entities)
 
             # Check completeness
-            missing_info = self._check_completeness(question_type, entities)
+            missing_info = self._check_completeness(question_type, entities, context)
             is_complete = len(missing_info) == 0
 
             # Generate clarification questions if needed
@@ -280,6 +285,87 @@ class QuestionValidator:
         else:
             # Default to French if ambiguous
             return Language.FRENCH
+
+    def _merge_context_into_entities(
+        self,
+        context: StructuredContext,
+        entities: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Merge provided context into extracted entities.
+
+        **RULE: Context has PRIORITY over question entities**
+
+        Args:
+            context: Structured context from caller
+            entities: Entities extracted from question text
+
+        Returns:
+            Merged entities dict
+        """
+        merged = entities.copy()
+
+        # 1. Map zone
+        if context.zone:
+            merged['zone'] = context.zone.name
+            merged['zone_code'] = context.zone.code
+            merged['zone_type'] = context.zone.zone_type.value
+
+        # 2. Map league (OVERRIDE question entities)
+        if context.league:
+            merged['leagues'] = [context.league]
+
+        if context.league_id:
+            merged['league_ids'] = [context.league_id]
+
+        # 3. Map fixture (OVERRIDE question entities)
+        if context.fixture:
+            teams = self._parse_fixture_string(context.fixture)
+            if teams:
+                merged['teams'] = teams  # Override
+
+        if context.fixture_id:
+            merged['fixture_ids'] = [context.fixture_id]
+
+        # 4. Map season
+        if context.season:
+            merged['season'] = context.season
+
+        logger.info(
+            "context_merged_into_entities",
+            context_provided=context.to_dict(),
+            entities_before=entities,
+            entities_after=merged
+        )
+
+        return merged
+
+    def _parse_fixture_string(self, fixture: str) -> Optional[List[str]]:
+        """
+        Parse a fixture string like "PSG vs OM" into team names.
+
+        Args:
+            fixture: String like "PSG vs OM", "Real Madrid - Barcelona"
+
+        Returns:
+            List of team names or None
+        """
+        # Try common separators
+        separators = [' vs ', ' vs. ', ' - ', ' v ', ' contre ']
+
+        fixture_lower = fixture.lower()
+        for sep in separators:
+            if sep in fixture_lower:
+                # Find separator position in original string (preserve case)
+                sep_index = fixture_lower.index(sep)
+                home_team = fixture[:sep_index].strip()
+                away_team = fixture[sep_index + len(sep):].strip()
+
+                if home_team and away_team:
+                    return [home_team, away_team]
+
+        logger.warning("fixture_parse_failed", fixture=fixture)
+        return None
 
     def _extract_entities(self, question: str) -> Dict[str, Any]:
         """
@@ -417,13 +503,21 @@ class QuestionValidator:
 
         return question_type, confidence
 
-    def _check_completeness(self, question_type: Optional[QuestionType], entities: Dict[str, Any]) -> List[str]:
+    def _check_completeness(
+        self,
+        question_type: Optional[QuestionType],
+        entities: Dict[str, Any],
+        context: Optional[StructuredContext] = None
+    ) -> List[str]:
         """
         Check if question has all required information.
 
+        **IMPORTANT**: If context provides required info, don't mark as missing.
+
         Args:
             question_type: Classified question type
-            entities: Extracted entities
+            entities: Extracted entities (already merged with context)
+            context: Original context (to check what was provided)
 
         Returns:
             List of missing information
@@ -449,17 +543,21 @@ class QuestionValidator:
         required = requirements.get(question_type, [])
 
         for req in required:
+            # Check in merged entities (which includes context)
             if req not in entities or not entities[req]:
                 missing.append(req)
 
         # Special checks
         if question_type == QuestionType.H2H:
             if 'teams' in entities and len(entities['teams']) < 2:
-                missing.append('second_team')
+                # Only add if context didn't provide a fixture
+                if not (context and context.fixture):
+                    missing.append('second_team')
 
         if question_type == QuestionType.TEAM_COMPARISON:
             if 'teams' in entities and len(entities['teams']) < 2:
-                missing.append('second_team')
+                if not (context and context.fixture):
+                    missing.append('second_team')
 
         return missing
 

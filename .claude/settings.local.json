@@ -27,7 +27,18 @@
       "Bash(docker-compose up:*)",
       "Bash(docker-compose logs:*)",
       "Bash(docker-compose ps:*)",
-      "Bash(docker exec:*)"
+      "Bash(docker exec:*)",
+      "Bash(timeout 10 powershell:*)",
+      "Bash(docker-compose restart:*)",
+      "Bash(timeout 20 powershell:*)",
+      "Bash(timeout 20 docker-compose logs:*)",
+      "Bash(docker-compose stop:*)",
+      "Bash(docker-compose start:*)",
+      "Bash(timeout 15 powershell:*)",
+      "Bash(git checkout:*)",
+      "Bash(timeout 15 docker-compose logs:*)",
+      "WebSearch",
+      "Bash(del:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,0 +1,23 @@
+<svg width="160" height="160" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    <filter id="blur1">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1" />
+    </filter>
+  </defs>
+  
+  <!-- Cercle extérieur -->
+  <circle cx="80" cy="80" r="78" fill="rgba(102, 126, 234, 0.05)" stroke="rgba(102, 126, 234, 0.4)" stroke-width="2" filter="url(#blur1)" />
+  
+  <!-- Cercle moyen -->
+  <circle cx="80" cy="80" r="53" fill="rgba(118, 75, 162, 0.08)" stroke="rgba(118, 75, 162, 0.5)" stroke-width="2" filter="url(#blur1)" />
+  
+  <!-- Cercle intérieur -->
+  <circle cx="80" cy="80" r="30" fill="url(#grad1)" />
+  
+  <!-- Effet de lumière centrale -->
+  <circle cx="80" cy="80" r="20" fill="rgba(255, 255, 255, 0.2)" />
+</svg>

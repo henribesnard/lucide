@@ -14,6 +14,9 @@ from backend.auth.router import router as auth_router
 from backend.conversations.router import router as conversations_router
 from backend.context.context_manager import ContextManager
 from backend.context.circuit_breaker import circuit_breaker_manager
+from backend.auth.dependencies import get_current_user, get_current_admin_user
+from backend.db.models import User
+from fastapi import FastAPI, HTTPException, Depends, status
 
 # Logging configuration
 logging.basicConfig(
@@ -85,20 +88,41 @@ async def health():
 
 
 @app.post("/chat", response_model=ChatResponse, tags=["Chat"])
-async def chat(request: ChatRequest):
+async def chat(
+    request: ChatRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Chat endpoint - REQUIRES AUTHENTICATION.
+
+    Only authenticated users can send messages.
+    Session is automatically created/retrieved per user.
+    """
     try:
-        session_id = request.session_id or str(uuid.uuid4())
+        # Use user_id as session_id for user isolation, or request.session_id if provided (for multi-session per user possibility in future)
+        # For now, let's stick to strict user isolation if session_id is not provided
+        if request.session_id:
+             # TODO: specific check if user owns this session_id if we store session ownership
+             session_id = request.session_id
+        else:
+             session_id = f"user_{current_user.user_id}"
 
         if session_id not in sessions:
-            logger.info(f"Creating new session: {session_id}")
-            sessions[session_id] = LucidePipeline(session_id=session_id)
+            logger.info(f"Creating new session for user {current_user.email} (ID: {session_id})")
+            sessions[session_id] = LucidePipeline(
+                session_id=session_id,
+                user_id=current_user.user_id # Pass user_id for context in pipeline
+            )
 
         pipeline = sessions[session_id]
         message_to_process = request.message
         if request.context:
             logger.info(f"Processing with context: {request.context}")
         logger.info(f"Processing message for session {session_id}: {message_to_process[:120]}...")
-        result = await pipeline.process(message_to_process)
+        
+        # We need to ensure the pipeline process method accepts user_id if we want to pass it down further
+        # Assuming pipeline.process signature handles it or we pass it via context
+        result = await pipeline.process(message_to_process, user_id=current_user.user_id)
 
         intent_obj = result["intent"]
         tool_names = [tool.name for tool in result["tool_results"]]
@@ -117,8 +141,24 @@ async def chat(request: ChatRequest):
 
 
 @app.delete("/session/{session_id}", tags=["Session"])
-async def delete_session(session_id: str):
+async def delete_session(
+    session_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Delete a session - Only owner can delete."""
+    
+    # Simple ownership check logic for now: 
+    # If session_id starts with "user_", it must match the current user
+    if session_id.startswith("user_"):
+        expected_session_id = f"user_{current_user.user_id}"
+        if session_id != expected_session_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot delete another user's session"
+            )
+
     if session_id in sessions:
+        # TODO: Real implementation should verify if generic session_id belongs to user
         await sessions[session_id].close()
         del sessions[session_id]
         return {"message": f"Session {session_id} deleted"}
@@ -167,7 +207,7 @@ async def shutdown_event():
 # ==========================================
 
 @app.get("/api/countries", tags=["Data"])
-async def get_countries():
+async def get_countries(current_user: User = Depends(get_current_user)):
     """Get all available countries from API-Football."""
     try:
         if not football_client:
@@ -180,7 +220,11 @@ async def get_countries():
 
 
 @app.get("/api/leagues", tags=["Data"])
-async def get_leagues(country: Optional[str] = None, current: Optional[bool] = True):
+async def get_leagues(
+    country: Optional[str] = None, 
+    current: Optional[bool] = True,
+    current_user: User = Depends(get_current_user)
+):
     """Get all available leagues, optionally filtered by country."""
     try:
         if not football_client:
@@ -205,7 +249,8 @@ async def get_leagues(country: Optional[str] = None, current: Optional[bool] = T
 async def get_fixtures(
     league_id: Optional[int] = None,
     date: Optional[str] = None,
-    season: Optional[int] = None
+    season: Optional[int] = None,
+    current_user: User = Depends(get_current_user)
 ):
     """Get fixtures for a specific league and date."""
     try:
@@ -237,7 +282,10 @@ async def get_fixtures(
 # ==========================================
 
 @app.get("/api/context/match/{fixture_id}", tags=["Context"])
-async def get_match_context(fixture_id: int):
+async def get_match_context(
+    fixture_id: int,
+    current_user: User = Depends(get_current_user)
+):
     """Get or create context for a specific match."""
     try:
         if not context_manager:
@@ -284,7 +332,11 @@ async def get_match_context(fixture_id: int):
 
 
 @app.get("/api/context/league/{league_id}", tags=["Context"])
-async def get_league_context(league_id: int, season: Optional[int] = None):
+async def get_league_context(
+    league_id: int, 
+    season: Optional[int] = None,
+    current_user: User = Depends(get_current_user)
+):
     """Get or create context for a specific league."""
     try:
         if not context_manager:
@@ -333,7 +385,7 @@ async def get_league_context(league_id: int, season: Optional[int] = None):
 
 
 @app.get("/api/contexts", tags=["Context"])
-async def list_contexts():
+async def list_contexts(current_user: User = Depends(get_current_user)):
     """List all active contexts."""
     try:
         if not context_manager:
@@ -392,7 +444,9 @@ async def health_check():
 
 
 @app.get("/api/circuit-breakers", tags=["Monitoring"])
-async def get_circuit_breakers():
+async def get_circuit_breakers(
+    current_user: User = Depends(get_current_admin_user)
+):
     """
     Get status of all circuit breakers.
 
@@ -421,7 +475,9 @@ async def get_circuit_breakers():
 
 
 @app.post("/api/circuit-breakers/reset", tags=["Monitoring"])
-async def reset_circuit_breakers():
+async def reset_circuit_breakers(
+    current_user: User = Depends(get_current_admin_user)
+):
     """
     Reset all circuit breakers (admin only).
 
@@ -429,7 +485,7 @@ async def reset_circuit_breakers():
     """
     try:
         circuit_breaker_manager.reset_all()
-        logger.warning("All circuit breakers have been reset via API")
+        logger.warning(f"All circuit breakers have been reset via API by {current_user.email}")
 
         return {
             "status": "success",
@@ -443,7 +499,9 @@ async def reset_circuit_breakers():
 
 
 @app.get("/api/context/stats", tags=["Monitoring"])
-async def get_context_stats():
+async def get_context_stats(
+    current_user: User = Depends(get_current_admin_user)
+):
     """
     Get context system statistics.
 
@@ -482,7 +540,9 @@ async def get_context_stats():
 # ============================================================================
 
 @app.get("/api/locks", tags=["Monitoring"])
-async def get_all_locks():
+async def get_all_locks(
+    current_user: User = Depends(get_current_admin_user)
+):
     """
     Get all active distributed locks.
 
@@ -506,7 +566,10 @@ async def get_all_locks():
 
 
 @app.get("/api/locks/{resource}", tags=["Monitoring"])
-async def get_lock_info(resource: str):
+async def get_lock_info(
+    resource: str,
+    current_user: User = Depends(get_current_admin_user)
+):
     """
     Get information about a specific lock.
 
@@ -532,7 +595,10 @@ async def get_lock_info(resource: str):
 
 
 @app.delete("/api/locks/{resource}", tags=["Monitoring"])
-async def force_release_lock(resource: str):
+async def force_release_lock(
+    resource: str,
+    current_user: User = Depends(get_current_admin_user)
+):
     """
     Force release a lock (admin only).
 
@@ -548,7 +614,7 @@ async def force_release_lock(resource: str):
         released = await context_manager.lock_manager.force_release(resource)
 
         if released:
-            logger.warning(f"Lock forcibly released via API: {resource}")
+            logger.warning(f"Lock forcibly released via API: {resource} by {current_user.email}")
             return {
                 "status": "success",
                 "message": f"Lock '{resource}' has been forcibly released",

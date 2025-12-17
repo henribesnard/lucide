@@ -13,6 +13,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Dict, Any, Optional, List
 import structlog
+from backend.agents.context_types import StructuredContext
 
 from backend.agents.question_validator import QuestionValidator, QuestionType, ValidationResult
 from backend.agents.endpoint_planner import EndpointPlanner, ExecutionPlan
@@ -28,6 +29,7 @@ class PipelineResult:
 
     # Question
     original_question: str
+    provided_context: Optional[StructuredContext] = None
 
     # Validation
     validation_result: Optional[ValidationResult] = None
@@ -122,6 +124,7 @@ class AutonomousPipeline:
     async def process_question(
         self,
         question: str,
+        context: Optional[StructuredContext] = None,
         user_id: Optional[str] = None,
         skip_execution: bool = False
     ) -> PipelineResult:
@@ -130,6 +133,7 @@ class AutonomousPipeline:
 
         Args:
             question: Question de l'utilisateur
+            context: Contexte structuré (zone, league, fixture)
             user_id: ID utilisateur (pour cache multi-utilisateurs)
             skip_execution: Si True, ne fait que validation + planning (pas d'appels API)
 
@@ -141,16 +145,20 @@ class AutonomousPipeline:
         logger.info(
             "pipeline_start",
             question=question,
+            has_context=context is not None,
             user_id=user_id,
             skip_execution=skip_execution
         )
 
-        result = PipelineResult(original_question=question)
+        result = PipelineResult(
+            original_question=question,
+            provided_context=context
+        )
 
         try:
             # 1. VALIDATION
             validation_start = time.time()
-            validation_result = await self.validator.validate(question)
+            validation_result = await self.validator.validate(question, context=context)
             validation_time = time.time() - validation_start
 
             result.validation_result = validation_result

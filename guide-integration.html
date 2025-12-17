@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lucide - Guide d'intégration du Logo</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="lucide-favicon.svg">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 60px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-bottom: 60px;
+        }
+        
+        header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .section {
+            margin-bottom: 60px;
+        }
+        
+        h2 {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        h3 {
+            color: #333;
+            font-size: 1.5em;
+            margin: 30px 0 15px 0;
+        }
+        
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin: 30px 0;
+        }
+        
+        .demo-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .demo-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+            transform: translateY(-5px);
+        }
+        
+        .demo-card h4 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 180px;
+            margin: 20px 0;
+        }
+        
+        .bg-dark {
+            background: #0a0a0a;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        .bg-light {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        /* Logo avec animation */
+        .logo-animated {
+            position: relative;
+            width: 160px;
+            height: 160px;
+        }
+        
+        .glass-circle {
+            position: absolute;
+            border-radius: 50%;
+            border: 2px solid rgba(102, 126, 234, 0.4);
+            background: rgba(102, 126, 234, 0.05);
+            backdrop-filter: blur(10px);
+        }
+        
+        .glass-circle-1 {
+            width: 160px;
+            height: 160px;
+            animation: pulse1 3s ease-in-out infinite;
+        }
+        
+        .glass-circle-2 {
+            width: 110px;
+            height: 110px;
+            top: 25px;
+            left: 25px;
+            border-color: rgba(118, 75, 162, 0.5);
+            background: rgba(118, 75, 162, 0.08);
+            animation: pulse2 3s ease-in-out infinite 0.5s;
+        }
+        
+        .glass-circle-3 {
+            width: 60px;
+            height: 60px;
+            top: 50px;
+            left: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            box-shadow: 0 0 30px rgba(102, 126, 234, 0.6);
+            animation: pulse3 3s ease-in-out infinite 1s;
+        }
+        
+        @keyframes pulse1 {
+            0%, 100% { transform: scale(1); opacity: 0.4; }
+            50% { transform: scale(1.05); opacity: 0.6; }
+        }
+        
+        @keyframes pulse2 {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.08); opacity: 0.7; }
+        }
+        
+        @keyframes pulse3 {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 30px rgba(102, 126, 234, 0.6); }
+            50% { transform: scale(1.1); box-shadow: 0 0 50px rgba(102, 126, 234, 0.9); }
+        }
+        
+        /* Respect du prefers-reduced-motion */
+        @media (prefers-reduced-motion: reduce) {
+            .glass-circle {
+                animation: none;
+            }
+        }
+        
+        .code-block {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+        
+        .code-block pre {
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #333;
+        }
+        
+        .size-example {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin: 10px;
+            border: 1px solid #e0e0e0;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        
+        .navbar-demo {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 15px 30px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .navbar-demo img {
+            width: 40px;
+            height: 40px;
+        }
+        
+        .navbar-demo span {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .footer-note {
+            text-align: center;
+            padding: 40px;
+            background: #f5f5f5;
+            border-radius: 12px;
+            margin-top: 60px;
+        }
+        
+        .footer-note p {
+            color: #666;
+            margin: 10px 0;
+        }
+        
+        .download-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 40px 0;
+        }
+        
+        .download-section h3 {
+            color: white;
+            margin-bottom: 20px;
+        }
+        
+        .download-list {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+        
+        .download-list li {
+            margin: 10px 0;
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>LUCIDE</h1>
+            <p>Guide d'intégration du logo Glassmorphism</p>
+        </div>
+    </header>
+    
+    <div class="container">
+        <!-- Section 1: Versions du logo -->
+        <div class="section">
+            <h2>1. Versions du logo</h2>
+            
+            <div class="demo-grid">
+                <div class="demo-card">
+                    <h4>Version Animée</h4>
+                    <div class="logo-container bg-dark">
+                        <div class="logo-animated">
+                            <div class="glass-circle glass-circle-1"></div>
+                            <div class="glass-circle glass-circle-2"></div>
+                            <div class="glass-circle glass-circle-3"></div>
+                        </div>
+                    </div>
+                    <p><strong>Usage :</strong> Interfaces web, applications</p>
+                </div>
+                
+                <div class="demo-card">
+                    <h4>Version Statique SVG</h4>
+                    <div class="logo-container bg-dark">
+                        <img src="lucide-logo.svg" alt="Logo Lucide" width="160" height="160">
+                    </div>
+                    <p><strong>Usage :</strong> Documents, emails, prints</p>
+                </div>
+                
+                <div class="demo-card">
+                    <h4>Version Monochrome</h4>
+                    <div class="logo-container bg-light">
+                        <img src="lucide-logo-mono.svg" alt="Logo Lucide Monochrome" width="160" height="160">
+                    </div>
+                    <p><strong>Usage :</strong> Tampons, gravures</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 2: Tailles -->
+        <div class="section">
+            <h2>2. Tailles recommandées</h2>
+            
+            <h3>Différentes tailles d'utilisation</h3>
+            <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center; margin: 30px 0;">
+                <div class="size-example">
+                    <img src="lucide-logo.svg" alt="Logo 16px" width="16" height="16">
+                    <span style="margin-left: 10px;">16×16px (Favicon min)</span>
+                </div>
+                <div class="size-example">
+                    <img src="lucide-logo.svg" alt="Logo 32px" width="32" height="32">
+                    <span style="margin-left: 10px;">32×32px (Favicon std)</span>
+                </div>
+                <div class="size-example">
+                    <img src="lucide-logo.svg" alt="Logo 48px" width="48" height="48">
+                    <span style="margin-left: 10px;">48×48px (Navbar mobile)</span>
+                </div>
+                <div class="size-example">
+                    <img src="lucide-logo.svg" alt="Logo 64px" width="64" height="64">
+                    <span style="margin-left: 10px;">64×64px (Navbar desktop)</span>
+                </div>
+                <div class="size-example">
+                    <img src="lucide-logo.svg" alt="Logo 128px" width="128" height="128">
+                    <span style="margin-left: 10px;">128×128px (Header)</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 3: Exemples d'intégration -->
+        <div class="section">
+            <h2>3. Exemples d'intégration</h2>
+            
+            <h3>Dans une barre de navigation</h3>
+            <div class="navbar-demo">
+                <img src="lucide-logo.svg" alt="Logo Lucide">
+                <span>LUCIDE</span>
+            </div>
+            
+            <h3>Code HTML pour le favicon</h3>
+            <div class="code-block">
+                <pre>&lt;!-- Dans le &lt;head&gt; de votre HTML --&gt;
+&lt;link rel="icon" type="image/svg+xml" href="lucide-favicon.svg"&gt;
+&lt;link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png"&gt;
+&lt;link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png"&gt;</pre>
+            </div>
+            
+            <h3>Code HTML pour l'image du logo</h3>
+            <div class="code-block">
+                <pre>&lt;!-- Logo simple --&gt;
+&lt;img src="lucide-logo.svg" alt="Logo Lucide" width="160" height="160"&gt;
+
+&lt;!-- Logo dans une navigation --&gt;
+&lt;nav&gt;
+    &lt;img src="lucide-logo.svg" alt="Lucide" class="logo"&gt;
+    &lt;span class="brand-name"&gt;LUCIDE&lt;/span&gt;
+&lt;/nav&gt;</pre>
+            </div>
+            
+            <h3>Code CSS pour l'animation</h3>
+            <div class="code-block">
+                <pre>/* Animation de pulsation */
+.logo-animated .circle {
+    animation: pulse 3s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { 
+        transform: scale(1); 
+        opacity: 0.4; 
+    }
+    50% { 
+        transform: scale(1.05); 
+        opacity: 0.6; 
+    }
+}
+
+/* Respect du prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+    .logo-animated .circle {
+        animation: none;
+    }
+}</pre>
+            </div>
+        </div>
+        
+        <!-- Section 4: Bonnes pratiques -->
+        <div class="section">
+            <h2>4. Bonnes pratiques</h2>
+            
+            <div class="demo-grid">
+                <div class="demo-card">
+                    <h4>✅ Fond sombre</h4>
+                    <div class="logo-container bg-dark">
+                        <img src="lucide-logo.svg" alt="Logo" width="120" height="120">
+                    </div>
+                    <p>Excellent contraste</p>
+                </div>
+                
+                <div class="demo-card">
+                    <h4>✅ Fond clair</h4>
+                    <div class="logo-container bg-light">
+                        <img src="lucide-logo.svg" alt="Logo" width="120" height="120">
+                    </div>
+                    <p>Bon contraste avec bordures</p>
+                </div>
+                
+                <div class="demo-card">
+                    <h4>❌ Fond coloré</h4>
+                    <div class="logo-container" style="background: linear-gradient(135deg, #ff6b6b, #feca57); border-radius: 8px; padding: 20px;">
+                        <img src="lucide-logo.svg" alt="Logo" width="120" height="120">
+                    </div>
+                    <p>Éviter les fonds trop chargés</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section téléchargement -->
+        <div class="download-section">
+            <h3>📦 Fichiers disponibles</h3>
+            <p>Tous les fichiers du logo sont prêts à l'emploi :</p>
+            <ul class="download-list">
+                <li>✓ lucide-logo.svg - Version principale SVG</li>
+                <li>✓ lucide-favicon.svg - Version favicon simplifiée</li>
+                <li>✓ lucide-logo-mono.svg - Version monochrome</li>
+                <li>✓ Lucide-Logo-Specifications.docx - Documentation complète</li>
+            </ul>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer-note">
+            <p><strong>Lucide Logo Glassmorphism</strong></p>
+            <p>Version 1.0 - Décembre 2025</p>
+            <p style="margin-top: 20px; color: #999;">
+                Pour toute question concernant l'utilisation du logo,<br>
+                consultez les spécifications complètes dans le document Word.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
