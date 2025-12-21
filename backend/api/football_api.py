@@ -1,11 +1,34 @@
+import hashlib
 import httpx
-from typing import Dict, List, Optional, Any
+import json
 import logging
-from datetime import datetime
+from typing import Dict, List, Optional, Any
 
 from backend.utils.status_mapping import is_valid_status
+from backend.config import settings
+import redis.asyncio as redis
 
 logger = logging.getLogger(__name__)
+
+CACHE_TTLS = {
+    "standings": 6 * 3600,
+    "players/squads": 24 * 3600,
+    "fixtures/headtohead": 7 * 24 * 3600,
+    "teams/statistics": 3 * 3600,
+    "players": 3 * 3600,
+}
+
+LIVE_STATUSES = {
+    "1H",
+    "2H",
+    "HT",
+    "ET",
+    "P",
+    "BT",
+    "SUSP",
+    "INT",
+    "LIVE",
+}
 
 
 class FootballAPIError(Exception):
@@ -22,13 +45,28 @@ class FootballAPIClient:
     Documentation: https://www.api-football.com/documentation-v3
     """
 
-    def __init__(self, api_key: str, base_url: str = "https://v3.football.api-sports.io"):
+    def __init__(
+        self,
+        api_key: str,
+        base_url: str = "https://v3.football.api-sports.io",
+        redis_url: Optional[str] = None,
+        enable_cache: Optional[bool] = None,
+    ):
         self.base_url = base_url
         self.headers = {
             # API-Football expects the x-apisports-key header (not x-rapidapi-key) per official docs.
             "x-apisports-key": api_key,
         }
         self.client = httpx.AsyncClient(timeout=30.0)
+        self.enable_cache = settings.ENABLE_REDIS_CACHE if enable_cache is None else enable_cache
+        self.redis_url = redis_url or settings.REDIS_URL
+        self.redis = None
+        if self.enable_cache:
+            try:
+                self.redis = redis.from_url(self.redis_url, decode_responses=True)
+            except Exception as exc:
+                logger.warning("Redis cache disabled: %s", exc)
+                self.redis = None
         # Small caches for low-churn referentials to reduce repeated calls
         self._cache_timezones: Optional[List[str]] = None
         self._cache_seasons: Optional[List[int]] = None
@@ -71,6 +109,58 @@ class FootballAPIClient:
         except httpx.HTTPError as exc:
             logger.error("HTTP error on %s: %s", endpoint, exc)
             raise FootballAPIError("HTTP error while calling API-Football") from exc
+
+    def _cache_key(self, endpoint: str, params: Dict[str, Any]) -> str:
+        params_str = json.dumps(params or {}, sort_keys=True, default=str)
+        digest = hashlib.md5(params_str.encode("utf-8")).hexdigest()
+        return f"lucide:football:{endpoint}:{digest}"
+
+    def _cache_ttl_for_fixtures(self, params: Dict[str, Any]) -> int:
+        if params.get("live"):
+            return 30
+        status = params.get("status")
+        if status and status.upper() in LIVE_STATUSES:
+            return 60
+        if params.get("last") or params.get("next"):
+            return 3600
+        if params.get("id"):
+            return 300
+        if params.get("date") or params.get("from") or params.get("to"):
+            return 12 * 3600
+        return 12 * 3600
+
+    def _cache_ttl(self, endpoint: str, params: Dict[str, Any]) -> int:
+        if not self.enable_cache or not self.redis:
+            return 0
+        if endpoint == "fixtures":
+            return self._cache_ttl_for_fixtures(params)
+        return CACHE_TTLS.get(endpoint, 0)
+
+    async def _get_cached_or_fetch(self, endpoint: str, params: Dict[str, Any], ttl_seconds: int) -> Dict:
+        if not self.redis:
+            return await self._make_request(endpoint, params)
+
+        cache_key = self._cache_key(endpoint, params)
+        try:
+            cached_data = await self.redis.get(cache_key)
+            if cached_data:
+                logger.info("Cache HIT for %s %s", endpoint, params)
+                return json.loads(cached_data)
+        except Exception as exc:
+            logger.warning("Cache get failed for %s: %s", endpoint, exc)
+
+        data = await self._make_request(endpoint, params)
+        try:
+            await self.redis.setex(cache_key, ttl_seconds, json.dumps(data, ensure_ascii=False))
+        except Exception as exc:
+            logger.warning("Cache set failed for %s: %s", endpoint, exc)
+        return data
+
+    async def _request(self, endpoint: str, params: Dict[str, Any], cache_ttl: Optional[int] = None) -> Dict:
+        ttl = self._cache_ttl(endpoint, params) if cache_ttl is None else cache_ttl
+        if ttl and ttl > 0:
+            return await self._get_cached_or_fetch(endpoint, params, ttl)
+        return await self._make_request(endpoint, params)
 
     # ==========================================
     # TIMEZONE
@@ -251,7 +341,7 @@ class FootballAPIClient:
         if date:
             params["date"] = date
 
-        data = await self._make_request("teams/statistics", params)
+        data = await self._request("teams/statistics", params)
         return data.get("response", {})
 
     async def get_team_seasons(self, team_id: int) -> List[int]:
@@ -327,7 +417,7 @@ class FootballAPIClient:
         if team_id:
             params["team"] = team_id
 
-        data = await self._make_request("standings", params)
+        data = await self._request("standings", params)
         return data.get("response", [])
 
     # ==========================================
@@ -402,7 +492,7 @@ class FootballAPIClient:
         if next:
             params["next"] = next
 
-        data = await self._make_request("fixtures", params)
+        data = await self._request("fixtures", params)
         return data.get("response", [])
 
     async def get_fixture_rounds(self, league_id: int, season: int, current: bool = False) -> List[str]:
@@ -473,7 +563,7 @@ class FootballAPIClient:
         if timezone:
             params["timezone"] = timezone
 
-        data = await self._make_request("fixtures/headtohead", params)
+        data = await self._request("fixtures/headtohead", params)
         return data.get("response", [])
 
     async def get_fixture_statistics(self, fixture_id: int, team_id: Optional[int] = None) -> List[Dict]:
@@ -726,7 +816,7 @@ class FootballAPIClient:
         if search:
             params["search"] = search
 
-        data = await self._make_request("players", params)
+        data = await self._request("players", params)
         return data
 
 
@@ -746,6 +836,30 @@ class FootballAPIClient:
         data = await self._make_request("players/profiles", params)
         return data.get("response", [])
 
+    async def get_player_profile(
+        self,
+        player_id: Optional[int] = None,
+        search: Optional[str] = None,
+    ) -> List[Dict]:
+        """Alias for player profiles (single page)."""
+        return await self.get_player_profiles(player_id=player_id, search=search, page=1)
+
+    async def get_player_statistics(
+        self,
+        player_id: Optional[int] = None,
+        season: Optional[int] = None,
+        team: Optional[int] = None,
+        league: Optional[int] = None,
+    ) -> List[Dict]:
+        """Return player statistics."""
+        data = await self.get_players(
+            player_id=player_id,
+            season=season,
+            team_id=team,
+            league_id=league,
+        )
+        return data.get("response", [])
+
     async def get_players_squads(
         self,
         team_id: Optional[int] = None,
@@ -758,7 +872,7 @@ class FootballAPIClient:
         if player_id:
             params["player"] = player_id
 
-        data = await self._make_request("players/squads", params)
+        data = await self._request("players/squads", params)
         return data.get("response", [])
 
     async def get_player_seasons(self, player_id: int) -> List[int]:
@@ -914,6 +1028,8 @@ class FootballAPIClient:
     async def close(self):
         """Ferme la connexion HTTP"""
         await self.client.aclose()
+        if self.redis:
+            await self.redis.close()
 
     # ==========================================
     # HELPER FUNCTIONS (pour faciliter l'usage)

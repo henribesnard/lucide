@@ -38,12 +38,26 @@ services:
     environment:
       DATABASE_URL: postgresql://lucide_user:lucide_password@postgres:5432/lucide_db
       REDIS_URL: redis://redis:6379
+      ENABLE_REDIS_CACHE: ${ENABLE_REDIS_CACHE:-true}
       SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
       JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-change-in-production}
       JWT_ALGORITHM: HS256
       JWT_EXPIRE_MINUTES: 30
       FOOTBALL_API_KEY: ${FOOTBALL_API_KEY}
-      DEEPSEEK_API_KEY: sk-2c36a3f728ec49539999f067a09e3fb4
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-chat}
+      LLM_PROVIDER: ${LLM_PROVIDER:-deepseek}
+      ENABLE_FAST_LLM: true
+      FAST_LLM_PROVIDER: openai
+      FAST_LLM_MODEL: gpt-4o-mini
+      FAST_LLM_API_KEY: ${FAST_LLM_API_KEY:-${OPENAI_API_KEY}}
+      SLOW_LLM_PROVIDER: openai
+      SLOW_LLM_MODEL: gpt-4o
+      SLOW_LLM_API_KEY: ${SLOW_LLM_API_KEY:-${OPENAI_API_KEY}}
+      ENABLE_PARALLEL_API_CALLS: ${ENABLE_PARALLEL_API_CALLS:-true}
+      MAX_PARALLEL_TOOL_CALLS: ${MAX_PARALLEL_TOOL_CALLS:-5}
+      ENABLE_SMART_SKIP_ANALYSIS: ${ENABLE_SMART_SKIP_ANALYSIS:-false}
       SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER}

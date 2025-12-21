@@ -14,8 +14,13 @@ from backend.context.context_types import (
     Context,
     MatchContext,
     LeagueContext,
+    TeamContext,
+    LeagueTeamContext,
+    PlayerContext,
     MatchStatus,
     LeagueStatus,
+    TeamStatus,
+    PlayerStatus,
     ContextType,
     UserQuestion,
 )
@@ -144,6 +149,165 @@ class ContextManager:
             "league_name": league_name,
             "country": country,
             "season": season,
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat(),
+            "user_questions": [],
+            "data_collected": {},
+            "context_size": 0,
+            "max_context_size": self.MAX_CONTEXT_SIZE,
+        }
+
+        # Calculate initial size
+        context["context_size"] = sys.getsizeof(json.dumps(context))
+
+        return context
+
+    def create_team_context(
+        self,
+        team_id: int,
+        team_name: str,
+        team_code: str,
+        country: str,
+        founded: int,
+        logo: str,
+    ) -> TeamContext:
+        """
+        Create a new team context.
+
+        Args:
+            team_id: The team ID
+            team_name: Team name
+            team_code: Team code (ex: "PSG")
+            country: Country name
+            founded: Year founded
+            logo: Logo URL
+
+        Returns:
+            TeamContext dict
+        """
+        context_id = f"team_{team_id}"
+
+        context: TeamContext = {
+            "context_id": context_id,
+            "context_type": ContextType.TEAM,
+            "status": TeamStatus.ACTIVE,
+            "team_id": team_id,
+            "team_name": team_name,
+            "team_code": team_code,
+            "country": country,
+            "founded": founded,
+            "logo": logo,
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat(),
+            "user_questions": [],
+            "data_collected": {},
+            "context_size": 0,
+            "max_context_size": self.MAX_CONTEXT_SIZE,
+        }
+
+        # Calculate initial size
+        context["context_size"] = sys.getsizeof(json.dumps(context))
+
+        return context
+
+    def create_league_team_context(
+        self,
+        team_id: int,
+        team_name: str,
+        team_code: str,
+        league_id: int,
+        league_name: str,
+        season: int,
+    ) -> LeagueTeamContext:
+        """
+        Create a new league-team context.
+
+        Args:
+            team_id: The team ID
+            team_name: Team name
+            team_code: Team code
+            league_id: The league ID
+            league_name: League name
+            season: Season year
+
+        Returns:
+            LeagueTeamContext dict
+        """
+        context_id = f"league_{league_id}_team_{team_id}_{season}"
+
+        context: LeagueTeamContext = {
+            "context_id": context_id,
+            "context_type": ContextType.LEAGUE_TEAM,
+            "status": TeamStatus.ACTIVE,
+            "team_id": team_id,
+            "team_name": team_name,
+            "team_code": team_code,
+            "league_id": league_id,
+            "league_name": league_name,
+            "season": season,
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat(),
+            "user_questions": [],
+            "data_collected": {},
+            "context_size": 0,
+            "max_context_size": self.MAX_CONTEXT_SIZE,
+        }
+
+        # Calculate initial size
+        context["context_size"] = sys.getsizeof(json.dumps(context))
+
+        return context
+
+    def create_player_context(
+        self,
+        player_id: int,
+        player_name: str,
+        firstname: str,
+        lastname: str,
+        age: int,
+        nationality: str,
+        position: str,
+        photo: str,
+        current_team: Optional[str] = None,
+        current_team_id: Optional[int] = None,
+        injured: bool = False,
+    ) -> PlayerContext:
+        """
+        Create a new player context.
+
+        Args:
+            player_id: The player ID
+            player_name: Full player name
+            firstname: First name
+            lastname: Last name
+            age: Player age
+            nationality: Nationality
+            position: Position (Attacker, Midfielder, etc.)
+            photo: Photo URL
+            current_team: Optional current team name
+            current_team_id: Optional current team ID
+            injured: Whether player is injured
+
+        Returns:
+            PlayerContext dict
+        """
+        status = PlayerStatus.INJURED if injured else PlayerStatus.ACTIVE
+        context_id = f"player_{player_id}"
+
+        context: PlayerContext = {
+            "context_id": context_id,
+            "context_type": ContextType.PLAYER,
+            "status": status,
+            "player_id": player_id,
+            "player_name": player_name,
+            "firstname": firstname,
+            "lastname": lastname,
+            "age": age,
+            "nationality": nationality,
+            "position": position,
+            "current_team": current_team,
+            "current_team_id": current_team_id,
+            "photo": photo,
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
             "user_questions": [],
@@ -385,32 +549,26 @@ class ContextManager:
             return []
 
         try:
-            # Use scan instead of keys for better performance
             all_keys = []
-            cursor = 0
 
-            # Scan for match contexts
-            while True:
-                cursor, keys = await self.redis_client.scan(
-                    cursor=cursor,
-                    match="match_*",
-                    count=100
-                )
-                all_keys.extend([k.decode() if isinstance(k, bytes) else k for k in keys])
-                if cursor == 0:
-                    break
+            patterns = [
+                "match_*",
+                "league_*",
+                "team_*",
+                "player_*",
+            ]
 
-            # Scan for league contexts
-            cursor = 0
-            while True:
-                cursor, keys = await self.redis_client.scan(
-                    cursor=cursor,
-                    match="league_*",
-                    count=100
-                )
-                all_keys.extend([k.decode() if isinstance(k, bytes) else k for k in keys])
-                if cursor == 0:
-                    break
+            for pattern in patterns:
+                cursor = 0
+                while True:
+                    cursor, keys = await self.redis_client.scan(
+                        cursor=cursor,
+                        match=pattern,
+                        count=100
+                    )
+                    all_keys.extend([k.decode() if isinstance(k, bytes) else k for k in keys])
+                    if cursor == 0:
+                        break
 
             # Filter out lock keys
             all_keys = [k for k in all_keys if not k.startswith("lock:")]

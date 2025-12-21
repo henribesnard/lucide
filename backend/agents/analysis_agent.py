@@ -1,13 +1,32 @@
 import json
 import logging
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from backend.agents.types import AnalysisResult, IntentResult, ToolCallResult
 from backend.llm.client import LLMClient
 from backend.prompts import ANALYSIS_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
+
+def _extract_season_hint(tool_results: List[ToolCallResult]) -> Optional[int]:
+    for tr in tool_results:
+        output = tr.output
+        if isinstance(output, dict):
+            season = output.get("season")
+            if season is not None:
+                try:
+                    return int(season)
+                except (TypeError, ValueError):
+                    pass
+        if isinstance(tr.arguments, dict):
+            season = tr.arguments.get("season")
+            if season is not None:
+                try:
+                    return int(season)
+                except (TypeError, ValueError):
+                    pass
+    return None
 
 
 def _compact_output(output: Any) -> Any:
@@ -64,6 +83,7 @@ class AnalysisAgent:
         intent: IntentResult,
         tool_results: List[ToolCallResult],
         assistant_notes: str,
+        context: Optional[Dict[str, Any]] = None,
     ) -> AnalysisResult:
         clean_results = [
             {
@@ -81,6 +101,13 @@ class AnalysisAgent:
             {
                 "role": "system",
                 "content": f"Intent: {intent.intent}. Entites: {intent.entities}. Notes outils: {assistant_notes}",
+            },
+            {
+                "role": "system",
+                "content": (
+                    f"Context payload: {json.dumps(context, ensure_ascii=True)}"
+                    if context else "Context payload: none"
+                ),
             },
             {
                 "role": "system",
@@ -128,9 +155,17 @@ class AnalysisAgent:
                         "gaps": ["Erreur lors de la generation de l'analyse"],
                         "safety_notes": [],
                     }
+            data_points = payload.get("data_points", [])
+            if not isinstance(data_points, list):
+                data_points = [str(data_points)]
+            season_hint = _extract_season_hint(tool_results)
+            if season_hint is not None:
+                season_tag = f"Season: {season_hint}"
+                if not any(str(item).startswith("Season:") for item in data_points):
+                    data_points.insert(0, season_tag)
             return AnalysisResult(
                 brief=payload.get("brief", ""),
-                data_points=payload.get("data_points", []) if isinstance(payload.get("data_points", []), list) else [str(payload.get("data_points"))],
+                data_points=data_points,
                 gaps=payload.get("gaps", []) if isinstance(payload.get("gaps", []), list) else [str(payload.get("gaps"))],
                 safety_notes=payload.get("safety_notes", []) if isinstance(payload.get("safety_notes", []), list) else [str(payload.get("safety_notes"))],
             )

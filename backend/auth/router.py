@@ -21,6 +21,7 @@ from backend.auth.security import (
     generate_verification_token,
 )
 from backend.auth.email_service import send_verification_email
+from backend.auth.dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,7 @@ async def register(request: UserRegisterRequest, db: Session = Depends(get_db)):
         last_name=request.last_name,
         verification_token=verification_token,
         verification_token_expires=verification_token_expires,
+        is_active=False,
     )
 
     db.add(new_user)
@@ -104,6 +106,7 @@ async def verify_email(request: VerifyEmailRequest, db: Session = Depends(get_db
 
     # Verify user
     user.is_verified = True
+    user.is_active = True
     user.verification_token = None
     user.verification_token_expires = None
 
@@ -129,6 +132,12 @@ async def login(request: UserLoginRequest, db: Session = Depends(get_db)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email not verified"
         )
 
     if not user.is_active:
@@ -158,3 +167,21 @@ async def login(request: UserLoginRequest, db: Session = Depends(get_db)):
             "subscription_tier": user.subscription_tier.value,
         }
     )
+
+
+@router.get("/me")
+async def get_me(current_user: User = Depends(get_current_user)):
+    """Get current user information."""
+    return {
+        "user_id": str(current_user.user_id),
+        "email": current_user.email,
+        "first_name": current_user.first_name,
+        "last_name": current_user.last_name,
+        "is_verified": current_user.is_verified,
+        "is_active": current_user.is_active,
+        "is_superuser": current_user.is_superuser,
+        "subscription_tier": current_user.subscription_tier.value,
+        "subscription_status": current_user.subscription_status.value,
+        "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+        "last_login": current_user.last_login.isoformat() if current_user.last_login else None,
+    }

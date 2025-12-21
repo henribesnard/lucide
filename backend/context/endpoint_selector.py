@@ -75,7 +75,7 @@ class EndpointSelector:
             "stats_final": ["fixtures", "fixtures/statistics"],
             "events_summary": ["fixtures", "fixtures/events"],
             "players_performance": ["fixtures", "fixtures/players"],
-            "match_analysis": ["fixtures", "fixtures/statistics", "fixtures/events"],
+            "analyse_rencontre": ["fixtures", "fixtures/statistics", "fixtures/events"],
         }
         return endpoints_map.get(intent, ["fixtures"])
 

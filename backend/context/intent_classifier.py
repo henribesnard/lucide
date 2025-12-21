@@ -57,7 +57,7 @@ class IntentClassifier:
             "keywords": ["performance", "joueurs", "buteur", "homme du match", "rating"],
             "endpoints": ["fixtures", "fixtures/players"],
         },
-        "match_analysis": {
+        "analyse_rencontre": {
             "keywords": ["analyse", "analyse du match", "comment"],
             "endpoints": ["fixtures", "fixtures/statistics", "fixtures/events"],
         },

@@ -1,47 +1,93 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   HomeIcon,
   ClockIcon,
-  BookmarkIcon,
+  ArchiveBoxIcon,
+  ArrowUturnLeftIcon,
   Cog6ToothIcon,
   PlusIcon,
   ChevronRightIcon,
   Bars3Icon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
+import { AuthManager } from "@/utils/auth";
+import type { Conversation } from "@/types/conversation";
 
-interface Conversation {
-  id: string;
-  title: string;
-  date: string;
-  preview: string;
+interface StoredUser {
+  email?: string;
+  full_name?: string;
+  first_name?: string;
+  last_name?: string;
 }
 
-export default function MainSidebar() {
+interface MainSidebarProps {
+  conversations: Conversation[];
+  activeConversationId: string | null;
+  onSelectConversation: (id: string) => void;
+  onNewConversation: () => void;
+  onToggleArchive: (id: string, archived: boolean) => void;
+}
+
+export default function MainSidebar({
+  conversations,
+  activeConversationId,
+  onSelectConversation,
+  onNewConversation,
+  onToggleArchive,
+}: MainSidebarProps) {
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [conversations] = useState<Conversation[]>([
-    {
-      id: "1",
-      title: "PSG vs OM - Analyse",
-      date: "Aujourd'hui",
-      preview: "Pronostic 1X2 pour le classique",
-    },
-    {
-      id: "2",
-      title: "Real Madrid - Buteurs",
-      date: "Hier",
-      preview: "Qui va marquer ce soir?",
-    },
-    {
-      id: "3",
-      title: "Premier League - Form",
-      date: "Il y a 2 jours",
-      preview: "Analyse de forme des équipes",
-    },
-  ]);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [user, setUser] = useState<StoredUser | null>(null);
+
+  useEffect(() => {
+    setUser(AuthManager.getUser());
+  }, []);
+
+  const fullName =
+    user?.full_name ||
+    [user?.first_name, user?.last_name].filter(Boolean).join(" ") ||
+    "";
+  const userEmail = user?.email || "";
+
+  const initials = (() => {
+    const cleaned = fullName.trim();
+    if (cleaned) {
+      const parts = cleaned.split(/\s+/).filter(Boolean);
+      if (parts.length === 1) {
+        return parts[0].slice(0, 1).toUpperCase();
+      }
+      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    }
+    if (userEmail) {
+      return userEmail.slice(0, 1).toUpperCase();
+    }
+    return "U";
+  })();
+
+  const displayName = fullName.trim() || userEmail.split("@")[0] || "Utilisateur";
+  const historyConversations = conversations.filter((c) => !c.isArchived);
+  const archivedConversations = conversations.filter((c) => c.isArchived);
+
+  const handleSelectConversation = (id: string) => {
+    onSelectConversation(id);
+    if (isMobileMenuOpen) {
+      setIsMobileMenuOpen(false);
+    }
+  };
+
+  const toggleArchive = (id: string, archived: boolean) => {
+    onToggleArchive(id, archived);
+  };
+
+  const handleLogout = async () => {
+    await AuthManager.logout();
+    if (typeof window !== "undefined") {
+      window.location.href = "/login";
+    }
+  };
 
   const menuItems = [
     {
@@ -55,14 +101,14 @@ export default function MainSidebar() {
       icon: ClockIcon,
       label: "Historique",
       hasSubmenu: true,
-      count: conversations.length,
+      count: historyConversations.length,
     },
     {
-      id: "saved",
-      icon: BookmarkIcon,
-      label: "Favoris",
+      id: "archive",
+      icon: ArchiveBoxIcon,
+      label: "Archives",
       hasSubmenu: true,
-      count: 0,
+      count: archivedConversations.length,
     },
     {
       id: "settings",
@@ -112,7 +158,8 @@ export default function MainSidebar() {
           <button
             className="w-full p-3 bg-teal-500 hover:bg-teal-600 text-white rounded-lg flex items-center justify-center gap-2 transition-colors font-medium"
             onClick={() => {
-              window.location.reload();
+              onNewConversation();
+              setActiveSection(null);
               setIsMobileMenuOpen(false);
             }}
           >
@@ -154,13 +201,69 @@ export default function MainSidebar() {
               <h3 className="text-xs font-semibold text-gray-500 uppercase px-3 py-2">
                 Aujourd'hui
               </h3>
-              {conversations
-                .filter((c) => c.date === "Aujourd'hui")
-                .map((conv) => (
-                  <button
+              {historyConversations
+                .filter((c) => c.dateLabel === "Aujourd'hui")
+                .map((conv) => {
+                  const isActive = conv.id === activeConversationId;
+                  return (
+                  <div
                     key={conv.id}
-                    className="w-full text-left p-3 hover:bg-gray-50 rounded-lg transition-colors"
-                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-start gap-2 p-3 rounded-lg transition-colors ${
+                      isActive ? "bg-teal-50" : "hover:bg-gray-50"
+                    }`}
+                  >
+                    <button
+                      className="flex-1 text-left"
+                      onClick={() => handleSelectConversation(conv.id)}
+                    >
+                      <div className="font-medium text-sm text-gray-900">
+                        {conv.title}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1 line-clamp-1">
+                        {conv.preview}
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => toggleArchive(conv.id, true)}
+                      className="p-1 rounded-md hover:bg-gray-100"
+                      aria-label="Archiver la conversation"
+                    >
+                      <ArchiveBoxIcon className="w-4 h-4 text-gray-400" />
+                    </button>
+                  </div>
+                );
+                })}
+              {historyConversations.filter((c) => c.dateLabel === "Aujourd'hui")
+                .length === 0 && (
+                <div className="p-3 text-xs text-gray-500">
+                  Aucune conversation aujourd'hui.
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeSection === "archive" && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <h3 className="text-xs font-semibold text-gray-500 uppercase px-3 py-2">
+                Conversations archivees
+              </h3>
+              {archivedConversations.length === 0 && (
+                <div className="p-3 text-xs text-gray-500">
+                  Aucune conversation archivee.
+                </div>
+              )}
+              {archivedConversations.map((conv) => {
+                const isActive = conv.id === activeConversationId;
+                return (
+                <div
+                  key={conv.id}
+                  className={`flex items-start gap-2 p-3 rounded-lg transition-colors ${
+                    isActive ? "bg-teal-50" : "hover:bg-gray-50"
+                  }`}
+                >
+                  <button
+                    className="flex-1 text-left"
+                    onClick={() => handleSelectConversation(conv.id)}
                   >
                     <div className="font-medium text-sm text-gray-900">
                       {conv.title}
@@ -168,23 +271,51 @@ export default function MainSidebar() {
                     <div className="text-xs text-gray-500 mt-1 line-clamp-1">
                       {conv.preview}
                     </div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      {conv.dateLabel}
+                    </div>
                   </button>
-                ))}
+                  <button
+                    onClick={() => toggleArchive(conv.id, false)}
+                    className="p-1 rounded-md hover:bg-gray-100"
+                    aria-label="Restaurer la conversation"
+                  >
+                    <ArrowUturnLeftIcon className="w-4 h-4 text-gray-400" />
+                  </button>
+                </div>
+              );
+              })}
             </div>
           )}
         </div>
 
         {/* Mobile Footer - User */}
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
-          <div className="flex items-center gap-3">
+          <button
+            type="button"
+            className="w-full flex items-center gap-3"
+            onClick={() => setIsUserMenuOpen((prev) => !prev)}
+          >
             <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
-              <span className="text-white font-semibold text-sm">H</span>
+              <span className="text-white font-semibold text-sm">{initials}</span>
             </div>
-            <div>
-              <div className="font-medium text-sm text-gray-900">Henri</div>
-              <div className="text-xs text-gray-500">henri@example.com</div>
+            <div className="text-left">
+              <div className="font-medium text-sm text-gray-900">
+                {displayName}
+              </div>
+              <div className="text-xs text-gray-500">{userEmail}</div>
             </div>
-          </div>
+          </button>
+          {isUserMenuOpen && (
+            <div className="mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
+              <button
+                onClick={handleLogout}
+                className="w-full text-sm font-medium text-red-600 hover:text-red-700"
+              >
+                Deconnexion
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -208,7 +339,10 @@ export default function MainSidebar() {
         {/* New Chat Button */}
         <button
           className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center mb-6 transition-colors"
-          onClick={() => window.location.reload()}
+          onClick={() => {
+            onNewConversation();
+            setActiveSection(null);
+          }}
         >
           <PlusIcon className="w-5 h-5 text-gray-700" />
         </button>
@@ -244,10 +378,31 @@ export default function MainSidebar() {
         </div>
 
         {/* User Avatar */}
-        <div className="mt-auto">
-          <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
-            <span className="text-white font-semibold text-sm">H</span>
-          </div>
+        <div className="mt-auto relative flex flex-col items-center">
+          <button
+            type="button"
+            onClick={() => setIsUserMenuOpen((prev) => !prev)}
+            className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center"
+            title={displayName}
+          >
+            <span className="text-white font-semibold text-sm">{initials}</span>
+          </button>
+          {isUserMenuOpen && (
+            <div className="absolute bottom-14 left-14 w-56 bg-white border border-slate-200 rounded-xl shadow-lg p-3">
+              <div className="text-sm font-semibold text-slate-900">
+                {displayName}
+              </div>
+              <div className="text-xs text-slate-500 mt-0.5">
+                {userEmail}
+              </div>
+              <button
+                onClick={handleLogout}
+                className="mt-3 w-full text-sm font-medium text-red-600 hover:text-red-700"
+              >
+                Deconnexion
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -276,53 +431,136 @@ export default function MainSidebar() {
                   <h3 className="text-xs font-semibold text-gray-500 uppercase px-3 py-2">
                     Aujourd'hui
                   </h3>
-                  {conversations
-                    .filter((c) => c.date === "Aujourd'hui")
-                    .map((conv) => (
-                      <button
+                  {historyConversations
+                    .filter((c) => c.dateLabel === "Aujourd'hui")
+                    .map((conv) => {
+                      const isActive = conv.id === activeConversationId;
+                      return (
+                      <div
                         key={conv.id}
-                        className="w-full text-left p-3 hover:bg-gray-50 rounded-lg transition-colors group"
+                        className={`flex items-start gap-2 p-3 rounded-lg transition-colors group ${
+                          isActive ? "bg-teal-50" : "hover:bg-gray-50"
+                        }`}
                       >
-                        <div className="font-medium text-sm text-gray-900 group-hover:text-teal-600">
-                          {conv.title}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1 line-clamp-1">
-                          {conv.preview}
-                        </div>
-                      </button>
-                    ))}
+                        <button
+                          className="flex-1 text-left"
+                          onClick={() => handleSelectConversation(conv.id)}
+                        >
+                          <div className="font-medium text-sm text-gray-900 group-hover:text-teal-600">
+                            {conv.title}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1 line-clamp-1">
+                            {conv.preview}
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => toggleArchive(conv.id, true)}
+                          className="p-1 rounded-md hover:bg-gray-100"
+                          aria-label="Archiver la conversation"
+                        >
+                          <ArchiveBoxIcon className="w-4 h-4 text-gray-400" />
+                        </button>
+                      </div>
+                    );
+                    })}
+                  {historyConversations.filter((c) => c.dateLabel === "Aujourd'hui")
+                    .length === 0 && (
+                    <div className="px-3 py-2 text-xs text-gray-500">
+                      Aucune conversation aujourd'hui.
+                    </div>
+                  )}
                 </div>
 
                 <div className="mb-4">
                   <h3 className="text-xs font-semibold text-gray-500 uppercase px-3 py-2">
                     Cette semaine
                   </h3>
-                  {conversations
-                    .filter((c) => c.date !== "Aujourd'hui")
-                    .map((conv) => (
-                      <button
+                  {historyConversations
+                    .filter((c) => c.dateLabel !== "Aujourd'hui")
+                    .map((conv) => {
+                      const isActive = conv.id === activeConversationId;
+                      return (
+                      <div
                         key={conv.id}
-                        className="w-full text-left p-3 hover:bg-gray-50 rounded-lg transition-colors group"
+                        className={`flex items-start gap-2 p-3 rounded-lg transition-colors group ${
+                          isActive ? "bg-teal-50" : "hover:bg-gray-50"
+                        }`}
                       >
-                        <div className="font-medium text-sm text-gray-900 group-hover:text-teal-600">
-                          {conv.title}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1 line-clamp-1">
-                          {conv.preview}
-                        </div>
-                        <div className="text-xs text-gray-400 mt-1">
-                          {conv.date}
-                        </div>
-                      </button>
-                    ))}
+                        <button
+                          className="flex-1 text-left"
+                          onClick={() => handleSelectConversation(conv.id)}
+                        >
+                          <div className="font-medium text-sm text-gray-900 group-hover:text-teal-600">
+                            {conv.title}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1 line-clamp-1">
+                            {conv.preview}
+                          </div>
+                          <div className="text-xs text-gray-400 mt-1">
+                            {conv.dateLabel}
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => toggleArchive(conv.id, true)}
+                          className="p-1 rounded-md hover:bg-gray-100"
+                          aria-label="Archiver la conversation"
+                        >
+                          <ArchiveBoxIcon className="w-4 h-4 text-gray-400" />
+                        </button>
+                      </div>
+                    );
+                    })}
+                  {historyConversations.filter((c) => c.dateLabel !== "Aujourd'hui")
+                    .length === 0 && (
+                    <div className="px-3 py-2 text-xs text-gray-500">
+                      Aucune conversation cette semaine.
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
-            {activeSection === "saved" && (
-              <div className="p-4 text-center text-gray-500">
-                <BookmarkIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                <p className="text-sm">Aucun favori pour le moment</p>
+            {activeSection === "archive" && (
+              <div className="p-2">
+                {archivedConversations.length === 0 && (
+                  <div className="p-4 text-center text-gray-500">
+                    <ArchiveBoxIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                    <p className="text-sm">Aucune conversation archivee</p>
+                  </div>
+                )}
+                {archivedConversations.map((conv) => {
+                  const isActive = conv.id === activeConversationId;
+                  return (
+                  <div
+                    key={conv.id}
+                    className={`flex items-start gap-2 p-3 rounded-lg transition-colors group ${
+                      isActive ? "bg-teal-50" : "hover:bg-gray-50"
+                    }`}
+                  >
+                    <button
+                      className="flex-1 text-left"
+                      onClick={() => handleSelectConversation(conv.id)}
+                    >
+                      <div className="font-medium text-sm text-gray-900 group-hover:text-teal-600">
+                        {conv.title}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1 line-clamp-1">
+                        {conv.preview}
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        {conv.dateLabel}
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => toggleArchive(conv.id, false)}
+                      className="p-1 rounded-md hover:bg-gray-100"
+                      aria-label="Restaurer la conversation"
+                    >
+                      <ArrowUturnLeftIcon className="w-4 h-4 text-gray-400" />
+                    </button>
+                  </div>
+                );
+                })}
               </div>
             )}
 

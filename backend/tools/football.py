@@ -1225,7 +1225,11 @@ async def execute_tool(
             table: List[Dict[str, Any]] = []
             for block in standings:
                 table.extend(block.get("league", {}).get("standings", [[]])[0])
-            return {"standings": [_summarize_standing(row) for row in table]}
+            return {
+                "season": args.get("season"),
+                "league_id": args.get("league_id"),
+                "standings": [_summarize_standing(row) for row in table],
+            }
 
         if name == "team_statistics":
             stats = await api_client.get_team_statistics(
@@ -1234,7 +1238,12 @@ async def execute_tool(
                 league_id=args["league_id"],
                 date=args.get("date"),
             )
-            return {"statistics": stats}
+            return {
+                "season": args.get("season"),
+                "league_id": args.get("league_id"),
+                "team_id": args.get("team_id"),
+                "statistics": stats,
+            }
 
         if name == "head_to_head":
             games = await api_client.get_head_to_head(
@@ -1282,25 +1291,41 @@ async def execute_tool(
             scorers = await api_client.get_top_scorers(
                 league_id=args["league_id"], season=args["season"]
             )
-            return {"top_scorers": _limit_list([_summarize_player(item) for item in scorers], limit=10)}
+            return {
+                "season": args.get("season"),
+                "league_id": args.get("league_id"),
+                "top_scorers": _limit_list([_summarize_player(item) for item in scorers], limit=10),
+            }
 
         if name == "top_assists":
             assists = await api_client.get_top_assists(
                 league_id=args["league_id"], season=args["season"]
             )
-            return {"top_assists": _limit_list([_summarize_player(item) for item in assists], limit=10)}
+            return {
+                "season": args.get("season"),
+                "league_id": args.get("league_id"),
+                "top_assists": _limit_list([_summarize_player(item) for item in assists], limit=10),
+            }
 
         if name == "top_yellow_cards":
             cards = await api_client.get_top_yellow_cards(
                 league_id=args["league_id"], season=args["season"]
             )
-            return {"top_yellow_cards": _limit_list([_summarize_player(item) for item in cards], limit=10)}
+            return {
+                "season": args.get("season"),
+                "league_id": args.get("league_id"),
+                "top_yellow_cards": _limit_list([_summarize_player(item) for item in cards], limit=10),
+            }
 
         if name == "top_red_cards":
             cards = await api_client.get_top_red_cards(
                 league_id=args["league_id"], season=args["season"]
             )
-            return {"top_red_cards": _limit_list([_summarize_player(item) for item in cards], limit=10)}
+            return {
+                "season": args.get("season"),
+                "league_id": args.get("league_id"),
+                "top_red_cards": _limit_list([_summarize_player(item) for item in cards], limit=10),
+            }
 
         if name == "injuries":
             injuries = await api_client.get_injuries(
@@ -1312,7 +1337,13 @@ async def execute_tool(
                 date=args.get("date"),
                 timezone=args.get("timezone"),
             )
-            return {"injuries": _limit_list([_summarize_injury(item) for item in injuries], limit=15)}
+            return {
+                "season": args.get("season"),
+                "league_id": args.get("league_id"),
+                "team_id": args.get("team_id"),
+                "fixture_id": args.get("fixture_id"),
+                "injuries": _limit_list([_summarize_injury(item) for item in injuries], limit=15),
+            }
 
         if name == "sidelined":
             sidelined = await api_client.get_sidelined(

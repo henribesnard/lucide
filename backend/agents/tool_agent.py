@@ -1,6 +1,8 @@
+import asyncio
 import json
 import logging
-from typing import List, Tuple, Optional
+import re
+from typing import List, Tuple, Optional, Dict, Any
 from datetime import datetime
 
 from backend.api.football_api import FootballAPIClient
@@ -8,8 +10,75 @@ from backend.agents.types import IntentResult, ToolCallResult
 from backend.llm.client import LLMClient
 from backend.prompts import TOOL_SYSTEM_PROMPT
 from backend.tools.football import TOOL_DEFINITIONS, execute_tool
+from backend.config import settings
 
 logger = logging.getLogger(__name__)
+
+SEASONAL_TOOLS = {
+    "standings",
+    "top_scorers",
+    "top_assists",
+    "top_yellow_cards",
+    "top_red_cards",
+    "team_statistics",
+    "fixture_rounds",
+    "player_statistics",
+    "injuries",
+}
+
+YEAR_PATTERN = re.compile(r"\b(19|20)\d{2}\b")
+RELATIVE_SEASON_PHRASES = (
+    "last season",
+    "previous season",
+    "last year",
+    "previous year",
+    "past season",
+    "saison derniere",
+    "derniere saison",
+    "saison precedente",
+    "saison passee",
+    "annee derniere",
+    "l an dernier",
+    "lan dernier",
+)
+
+
+def _current_season_year(reference: Optional[datetime] = None) -> int:
+    now = reference or datetime.utcnow()
+    return now.year if now.month >= 8 else now.year - 1
+
+
+def _season_from_date(date_str: Optional[str]) -> Optional[int]:
+    if not date_str:
+        return None
+    try:
+        parsed = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        return parsed.year if parsed.month >= 8 else parsed.year - 1
+    except Exception:
+        return None
+
+
+def _message_mentions_explicit_year(message: str) -> bool:
+    return bool(YEAR_PATTERN.search(message))
+
+
+def _message_mentions_relative_season(message: str) -> bool:
+    lowered = message.lower()
+    return any(phrase in lowered for phrase in RELATIVE_SEASON_PHRASES)
+
+
+def _default_season_for_request(message: str, context: Optional[Dict[str, Any]]) -> Optional[int]:
+    if _message_mentions_explicit_year(message) or _message_mentions_relative_season(message):
+        return None
+    if context:
+        match_date = context.get("match_date")
+        inferred = _season_from_date(match_date)
+        if inferred:
+            return inferred
+        context_season = context.get("season")
+        if isinstance(context_season, int):
+            return context_season
+    return _current_season_year()
 
 
 class ToolAgent:
@@ -35,7 +104,7 @@ class ToolAgent:
         """
         If analyse_rencontre is missing critical data, force the execution of must-have tools.
         """
-        if intent.intent != "analyse_rencontre":
+        if intent.intent not in {"analyse_rencontre", "match_analysis"}:
             return tool_results
 
         available_tools = {tr.name for tr in tool_results}
@@ -59,11 +128,14 @@ class ToolAgent:
 
         for tr in tool_results:
             if tr.name == "search_team" and isinstance(tr.output, dict):
-                teams = tr.output.get("teams") or []
-                for t in teams:
-                    tid = t.get("id")
-                    if tid:
-                        team_ids.append(tid)
+                team_wrapper = tr.output.get("team")
+                if team_wrapper and isinstance(team_wrapper, dict):
+                    # search_team returns {'team': {'team': {...}, 'venue': {...}}}
+                    team_data = team_wrapper.get("team")
+                    if team_data and isinstance(team_data, dict):
+                        tid = team_data.get("id")
+                        if tid:
+                            team_ids.append(tid)
             if tr.name == "fixtures_search" and isinstance(tr.output, dict):
                 fixtures = tr.output.get("fixtures") or []
                 if fixtures:
@@ -81,7 +153,7 @@ class ToolAgent:
                             team_ids.append(tid)
 
         if len(team_ids) < 2:
-            logger.warning("Force critical tools: not enough teams found; skipping force execution.")
+            logger.warning(f"Force critical tools: not enough teams found ({len(team_ids)}); skipping force execution.")
             return tool_results
 
         # Fallbacks
@@ -163,7 +235,106 @@ class ToolAgent:
 
         return tool_results
 
-    async def run(self, user_message: str, intent: IntentResult) -> Tuple[List[ToolCallResult], str]:
+    async def _execute_tool_call(
+        self,
+        tool_call,
+        default_season: Optional[int],
+        semaphore: Optional[asyncio.Semaphore],
+    ) -> Tuple[ToolCallResult, Dict[str, Any]]:
+        try:
+            try:
+                arguments = json.loads(tool_call.function.arguments or "{}")
+            except json.JSONDecodeError:
+                arguments = {}
+
+            if default_season and tool_call.function.name in SEASONAL_TOOLS:
+                if arguments.get("season") != default_season:
+                    arguments["season"] = default_season
+
+            logger.info("Executing tool %s with args %s", tool_call.function.name, arguments)
+
+            async def _run():
+                if tool_call.function.name == "analyze_match" and self.context_agent:
+                    fixture_id = arguments.get("fixture_id")
+                    bet_type = arguments.get("bet_type")
+
+                    if not fixture_id:
+                        return {"error": "fixture_id is required for analyze_match"}
+
+                    try:
+                        context_data = await self.context_agent.get_match_context(fixture_id)
+                        context = context_data["context"]
+
+                        if bet_type:
+                            analysis = context.analyses.get(bet_type)
+                            if analysis:
+                                return {
+                                    "fixture_id": fixture_id,
+                                    "match": f"{context.home_team} vs {context.away_team}",
+                                    "bet_type": bet_type,
+                                    "indicators": analysis.indicators,
+                                    "coverage_complete": analysis.coverage_complete,
+                                    "source": context_data["source"],
+                                    "api_calls": context_data["api_calls"],
+                                }
+                            return {"error": f"Bet type '{bet_type}' not found"}
+
+                        return {
+                            "fixture_id": fixture_id,
+                            "match": f"{context.home_team} vs {context.away_team}",
+                            "league": context.league,
+                            "date": str(context.date) if context.date else None,
+                            "status": context.status,
+                            "available_analyses": list(context.analyses.keys()),
+                            "source": context_data["source"],
+                            "api_calls": context_data["api_calls"],
+                        }
+                    except Exception as exc:
+                        return {"error": f"Failed to analyze match: {str(exc)}"}
+
+                return await execute_tool(self.api_client, tool_call.function.name, arguments)
+
+            if semaphore:
+                async with semaphore:
+                    result = await _run()
+            else:
+                result = await _run()
+
+            error = result.get("error") if isinstance(result, dict) else None
+            tool_result = ToolCallResult(
+                name=tool_call.function.name,
+                arguments=arguments,
+                output=result,
+                error=error,
+            )
+            tool_message = {
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": json.dumps(result, ensure_ascii=False),
+            }
+            return tool_result, tool_message
+        except Exception as exc:
+            logger.error("Tool execution failed: %s", exc, exc_info=True)
+            error_payload = {"error": str(exc)}
+            tool_result = ToolCallResult(
+                name=getattr(tool_call.function, "name", "unknown"),
+                arguments={},
+                output=error_payload,
+                error=str(exc),
+            )
+            tool_message = {
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": json.dumps(error_payload, ensure_ascii=False),
+            }
+            return tool_result, tool_message
+
+    async def run(
+        self,
+        user_message: str,
+        intent: IntentResult,
+        context: Optional[Dict[str, Any]] = None
+    ) -> Tuple[List[ToolCallResult], str]:
         league_mapping = (
             "Mapping ligues vers IDs: "
             "Ligue 1=61; Premier League=39; La Liga=140; Bundesliga=78; Serie A=135; "
@@ -239,18 +410,28 @@ class ToolAgent:
             "stade_info": "venues avec venue_id/name/city/country/search.",
         }
 
+        normalized_intent = "analyse_rencontre" if intent.intent == "match_analysis" else intent.intent
+        default_season = _default_season_for_request(user_message, context)
+
         messages = [
             {"role": "system", "content": TOOL_SYSTEM_PROMPT},
             {
                 "role": "system",
-                "content": f"Intent cible: {intent.intent}. Entites: {intent.entities}. "
+                "content": f"Intent cible: {normalized_intent}. Entites: {intent.entities}. "
                 "Si needs_data est False, reponds directement par une courte note sans tool.",
+            },
+            {
+                "role": "system",
+                "content": (
+                    f"Context payload: {json.dumps(context, ensure_ascii=True)}"
+                    if context else "Context payload: none"
+                ),
             },
             {"role": "system", "content": league_mapping},
             {
                 "role": "system",
                 "content": intent_guidance.get(
-                    intent.intent,
+                    normalized_intent,
                     "Choisis les tools les plus pertinents. Utilise le mapping des ligues quand une ligue est mentionnee.",
                 ),
             },
@@ -302,76 +483,44 @@ class ToolAgent:
                     }
                 )
 
-                for tool_call in msg.tool_calls:
-                    try:
-                        arguments = json.loads(tool_call.function.arguments or "{}")
-                    except json.JSONDecodeError:
-                        arguments = {}
-
-                    logger.info(f"Executing tool {tool_call.function.name} with args {arguments}")
-
-                    # Special handling for analyze_match tool
-                    if tool_call.function.name == "analyze_match" and self.context_agent:
-                        fixture_id = arguments.get("fixture_id")
-                        bet_type = arguments.get("bet_type")
-
-                        if not fixture_id:
-                            result = {"error": "fixture_id is required for analyze_match"}
-                        else:
-                            try:
-                                # Get match context (from cache or fresh)
-                                context_data = await self.context_agent.get_match_context(fixture_id)
-                                context = context_data["context"]
-
-                                # If bet_type specified, return specific analysis
-                                if bet_type:
-                                    analysis = context.analyses.get(bet_type)
-                                    if analysis:
-                                        result = {
-                                            "fixture_id": fixture_id,
-                                            "match": f"{context.home_team} vs {context.away_team}",
-                                            "bet_type": bet_type,
-                                            "indicators": analysis.indicators,
-                                            "coverage_complete": analysis.coverage_complete,
-                                            "source": context_data["source"],
-                                            "api_calls": context_data["api_calls"]
-                                        }
-                                    else:
-                                        result = {"error": f"Bet type '{bet_type}' not found"}
-                                else:
-                                    # Return all available analyses
-                                    result = {
-                                        "fixture_id": fixture_id,
-                                        "match": f"{context.home_team} vs {context.away_team}",
-                                        "league": context.league,
-                                        "date": str(context.date) if context.date else None,
-                                        "status": context.status,
-                                        "available_analyses": list(context.analyses.keys()),
-                                        "source": context_data["source"],
-                                        "api_calls": context_data["api_calls"]
-                                    }
-                            except Exception as e:
-                                result = {"error": f"Failed to analyze match: {str(e)}"}
-                    else:
-                        # Standard tool execution
-                        result = await execute_tool(self.api_client, tool_call.function.name, arguments)
-
-                    tool_results.append(
-                        ToolCallResult(
-                            name=tool_call.function.name,
-                            arguments=arguments,
-                            output=result,
-                            error=result.get("error") if isinstance(result, dict) else None,
+                if settings.ENABLE_PARALLEL_API_CALLS and len(msg.tool_calls) > 1:
+                    semaphore = asyncio.Semaphore(max(1, settings.MAX_PARALLEL_TOOL_CALLS))
+                    tasks = [
+                        self._execute_tool_call(tool_call, default_season, semaphore)
+                        for tool_call in msg.tool_calls
+                    ]
+                    results = await asyncio.gather(*tasks, return_exceptions=True)
+                    for idx, result in enumerate(results):
+                        if isinstance(result, Exception):
+                            error_payload = {"error": str(result)}
+                            tool_results.append(
+                                ToolCallResult(
+                                    name=msg.tool_calls[idx].function.name,
+                                    arguments={},
+                                    output=error_payload,
+                                    error=str(result),
+                                )
+                            )
+                            conversation.append(
+                                {
+                                    "role": "tool",
+                                    "tool_call_id": msg.tool_calls[idx].id,
+                                    "content": json.dumps(error_payload, ensure_ascii=False),
+                                }
+                            )
+                            continue
+                        tool_result, tool_message = result
+                        tool_results.append(tool_result)
+                        conversation.append(tool_message)
+                else:
+                    for tool_call in msg.tool_calls:
+                        tool_result, tool_message = await self._execute_tool_call(
+                            tool_call,
+                            default_season,
+                            None,
                         )
-                    )
-
-                    conversation.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": tool_call.id,
-                            "content": json.dumps(result, ensure_ascii=False),
-                        }
-                    )
+                        tool_results.append(tool_result)
+                        conversation.append(tool_message)
                 continue
 
             assistant_notes = msg.content or ""

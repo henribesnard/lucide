@@ -9,6 +9,11 @@ from backend.context.context_types import (
     LeagueContext,
     MatchStatus,
     LeagueStatus,
+    TeamContext,
+    LeagueTeamContext,
+    PlayerContext,
+    TeamStatus,
+    PlayerStatus,
     ContextType,
 )
 from backend.context.status_classifier import StatusClassifier
@@ -22,6 +27,11 @@ __all__ = [
     "LeagueContext",
     "MatchStatus",
     "LeagueStatus",
+    "TeamContext",
+    "LeagueTeamContext",
+    "PlayerContext",
+    "TeamStatus",
+    "PlayerStatus",
     "ContextType",
     "StatusClassifier",
     "IntentClassifier",

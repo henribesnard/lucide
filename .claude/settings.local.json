@@ -38,7 +38,18 @@
       "Bash(git checkout:*)",
       "Bash(timeout 15 docker-compose logs:*)",
       "WebSearch",
-      "Bash(del:*)"
+      "Bash(del:*)",
+      "Bash(timeout 5 docker-compose logs:*)",
+      "Bash(docker rmi:*)",
+      "Bash(docker-compose:*)",
+      "Bash(timeout 10 docker-compose:*)",
+      "Bash(timeout 5 docker-compose:*)",
+      "Bash(timeout 15 docker-compose:*)",
+      "Bash(timeout:*)",
+      "Bash(curl:*)",
+      "Bash(grep:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhOTVkYmZmNS04Y2U2LTQ1ZTktYjQwZS0zMjZkYWRlY2QwNzAiLCJleHAiOjE3NjYyMTY5NDZ9.khxDc8fNy8tbLwvdJFXi-m_x7R9Ec-l9enRU8anf1yU\")",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

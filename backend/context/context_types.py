@@ -11,6 +11,9 @@ class ContextType(str, Enum):
     """Types of context."""
     MATCH = "match"
     LEAGUE = "league"
+    TEAM = "team"
+    PLAYER = "player"
+    LEAGUE_TEAM = "league_team"
 
 
 class MatchStatus(str, Enum):
@@ -25,6 +28,20 @@ class LeagueStatus(str, Enum):
     PAST = "past"
     CURRENT = "current"
     UPCOMING = "upcoming"
+
+
+class TeamStatus(str, Enum):
+    """Status of a team."""
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+
+
+class PlayerStatus(str, Enum):
+    """Status of a player."""
+    ACTIVE = "active"
+    INJURED = "injured"
+    TRANSFERRED = "transferred"
+    RETIRED = "retired"
 
 
 class UserQuestion(TypedDict):
@@ -64,4 +81,44 @@ class LeagueContext(Context):
     league_name: str
     country: str
     season: int
+    data_collected: Dict[str, Any]  # Collected API data
+
+
+class TeamContext(Context):
+    """Context for a team (all competitions)."""
+    status: TeamStatus
+    team_id: int
+    team_name: str
+    team_code: str
+    country: str
+    founded: int
+    logo: str
+    data_collected: Dict[str, Any]  # Collected API data
+
+
+class LeagueTeamContext(Context):
+    """Context for a team in a specific league."""
+    status: TeamStatus
+    team_id: int
+    team_name: str
+    team_code: str
+    league_id: int
+    league_name: str
+    season: int
+    data_collected: Dict[str, Any]  # Collected API data
+
+
+class PlayerContext(Context):
+    """Context for a player."""
+    status: PlayerStatus
+    player_id: int
+    player_name: str
+    firstname: str
+    lastname: str
+    age: int
+    nationality: str
+    position: str
+    current_team: Optional[str]
+    current_team_id: Optional[int]
+    photo: str
     data_collected: Dict[str, Any]  # Collected API data
