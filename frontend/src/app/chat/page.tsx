@@ -1,66 +1,11 @@
-
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import ChatBubble from "@/components/ChatBubble";
 import MainSidebar from "@/components/MainSidebar";
-import { AuthManager } from "@/utils/auth";
+import { ConversationsAPI, type ConversationListItem } from "@/utils/conversations";
 import type { Conversation, ConversationUpsert } from "@/types/conversation";
-
-const LEGACY_STORAGE_KEY = "lucide_conversations_v1";
-const STORAGE_PREFIX = "lucide_conversations_v2_";
-
-const seedConversations: Conversation[] = [
-  {
-    id: "seed-1",
-    sessionId: "seed-1",
-    title: "PSG vs OM - Analyse",
-    preview: "Pronostic 1X2 pour le classique",
-    dateLabel: "Aujourd'hui",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    messages: [
-      {
-        id: "seed-1-user",
-        type: "user",
-        content: "Analyse PSG vs OM.",
-        timestamp: new Date().toISOString(),
-      },
-      {
-        id: "seed-1-assistant",
-        type: "assistant",
-        content: "Voici une analyse rapide avec pronostic 1X2.",
-        timestamp: new Date().toISOString(),
-      },
-    ],
-    isArchived: false,
-  },
-  {
-    id: "seed-2",
-    sessionId: "seed-2",
-    title: "Real Madrid - Buteurs",
-    preview: "Qui va marquer ce soir?",
-    dateLabel: "Hier",
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000).toISOString(),
-    messages: [
-      {
-        id: "seed-2-user",
-        type: "user",
-        content: "Quels buteurs pour Real Madrid ce soir?",
-        timestamp: new Date(Date.now() - 86400000).toISOString(),
-      },
-      {
-        id: "seed-2-assistant",
-        type: "assistant",
-        content: "Voici les buteurs probables selon la forme recente.",
-        timestamp: new Date(Date.now() - 86400000).toISOString(),
-      },
-    ],
-    isArchived: false,
-  },
-];
 
 const getDateLabel = (isoDate: string) => {
   const target = new Date(isoDate);
@@ -74,79 +19,68 @@ const getDateLabel = (isoDate: string) => {
   return target.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
 };
 
-const normalizeConversation = (conv: Conversation): Conversation => {
-  const updatedAt = conv.updatedAt || conv.createdAt || new Date().toISOString();
+/**
+ * Convertir une conversation de l'API vers le format frontend
+ */
+const apiToFrontendConversation = (apiConv: ConversationListItem): Conversation => {
   return {
-    ...conv,
-    id: conv.id || conv.sessionId,
-    dateLabel: conv.dateLabel || getDateLabel(updatedAt),
-    createdAt: conv.createdAt || updatedAt,
-    updatedAt,
-    title: conv.title || "Conversation",
-    preview: conv.preview || "",
-    messages: conv.messages || [],
+    id: apiConv.conversation_id,
+    sessionId: apiConv.conversation_id,
+    title: apiConv.title,
+    preview: "", // Sera rempli quand on charge les messages
+    dateLabel: getDateLabel(apiConv.updated_at),
+    createdAt: apiConv.created_at,
+    updatedAt: apiConv.updated_at,
+    messages: [],
+    isArchived: apiConv.is_archived,
   };
 };
 
 export default function ChatPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const [storageKey, setStorageKey] = useState<string | null>(null);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const getStorageKey = (user: { user_id?: string; email?: string } | null) => {
-    if (!user) return `${STORAGE_PREFIX}anonymous`;
-    const identifier = user.user_id || user.email || "anonymous";
-    return `${STORAGE_PREFIX}${identifier}`;
-  };
+  /**
+   * Charger les conversations depuis l'API
+   */
+  const loadConversations = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const user = AuthManager.getUser();
-    const key = getStorageKey(user);
-    setStorageKey(key);
-    const raw = window.localStorage.getItem(key);
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw) as Conversation[];
-        setConversations(parsed.map(normalizeConversation));
-        setIsHydrated(true);
-        return;
-      } catch (error) {
-        console.error("Failed to parse conversations storage:", error);
-      }
+      // Charger les conversations actives et archivées
+      const [activeConvs, archivedConvs] = await Promise.all([
+        ConversationsAPI.list(false),
+        ConversationsAPI.list(true),
+      ]);
+
+      const allConversations = [...activeConvs, ...archivedConvs].map(apiToFrontendConversation);
+      setConversations(allConversations);
+    } catch (err) {
+      console.error("Failed to load conversations:", err);
+      setError(err instanceof Error ? err.message : "Failed to load conversations");
+      setConversations([]);
+    } finally {
+      setIsLoading(false);
     }
-
-    const legacyRaw = window.localStorage.getItem(LEGACY_STORAGE_KEY);
-    if (legacyRaw) {
-      try {
-        const parsed = JSON.parse(legacyRaw) as Conversation[];
-        const normalized = parsed.map(normalizeConversation);
-        window.localStorage.setItem(key, JSON.stringify(normalized));
-        setConversations(normalized);
-        setIsHydrated(true);
-        return;
-      } catch (error) {
-        console.error("Failed to migrate legacy conversations:", error);
-      }
-    }
-
-    setConversations(seedConversations.map(normalizeConversation));
-    setIsHydrated(true);
   }, []);
 
+  /**
+   * Charger les conversations au montage du composant
+   */
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!storageKey || !isHydrated) return;
-    window.localStorage.setItem(storageKey, JSON.stringify(conversations));
-  }, [conversations, storageKey, isHydrated]);
+    loadConversations();
+  }, [loadConversations]);
 
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === activeConversationId) || null,
     [activeConversationId, conversations]
   );
 
-  const handleConversationUpsert = (update: ConversationUpsert) => {
+  const handleConversationUpsert = async (update: ConversationUpsert) => {
+    // Mise à jour optimiste de l'UI
     setConversations((prev) => {
       const existingIndex = prev.findIndex(
         (conv) => conv.sessionId === update.sessionId || conv.id === update.sessionId
@@ -175,6 +109,26 @@ export default function ChatPage() {
       return [conversation, ...prev];
     });
     setActiveConversationId(update.sessionId);
+
+    // Persister dans la base de données
+    try {
+      const existing = conversations.find(
+        (conv) => conv.sessionId === update.sessionId || conv.id === update.sessionId
+      );
+
+      if (existing && existing.id !== update.sessionId) {
+        // Mettre à jour une conversation existante
+        await ConversationsAPI.update(existing.id, {
+          title: update.title || existing.title,
+        });
+      }
+      // Note: Si c'est une nouvelle conversation (existing.id === update.sessionId),
+      // elle sera créée automatiquement par le backend lors du premier message
+    } catch (err) {
+      console.error("Failed to persist conversation:", err);
+      // On ne rollback pas l'UI car la conversation fonctionne quand même
+      // (stockée en mémoire côté backend)
+    }
   };
 
   const handleNewConversation = () => {
@@ -185,17 +139,44 @@ export default function ChatPage() {
     setActiveConversationId(id);
   };
 
-  const handleToggleArchive = (id: string, archived: boolean) => {
-    setConversations((prev) =>
-      prev.map((conv) =>
-        conv.id === id ? { ...conv, isArchived: archived } : conv
-      )
-    );
+  const handleToggleArchive = async (id: string, archived: boolean) => {
+    try {
+      // Mise à jour optimiste
+      setConversations((prev) =>
+        prev.map((conv) =>
+          conv.id === id ? { ...conv, isArchived: archived } : conv
+        )
+      );
+
+      // Appel API
+      await ConversationsAPI.update(id, { is_archived: archived });
+    } catch (err) {
+      console.error("Failed to toggle archive:", err);
+      // Rollback en cas d'erreur
+      setConversations((prev) =>
+        prev.map((conv) =>
+          conv.id === id ? { ...conv, isArchived: !archived } : conv
+        )
+      );
+      setError(err instanceof Error ? err.message : "Failed to update conversation");
+    }
   };
 
   return (
     <AuthGuard>
       <div className="min-h-screen bg-slate-50">
+        {error && (
+          <div className="fixed top-4 right-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg shadow-md z-50">
+            <p className="text-sm font-medium">{error}</p>
+            <button
+              onClick={() => setError(null)}
+              className="absolute top-1 right-1 text-red-600 hover:text-red-800"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         <MainSidebar
           conversations={conversations}
           activeConversationId={activeConversationId}

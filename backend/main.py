@@ -11,15 +11,16 @@ from datetime import datetime, timedelta
 from backend.agents.pipeline import LucidePipeline
 from backend.config import settings
 from backend.api.football_api import FootballAPIClient
-from backend.db.database import init_db
+from backend.db.database import init_db, get_db
 from backend.auth.router import router as auth_router
 from backend.conversations.router import router as conversations_router
 from backend.context.context_manager import ContextManager
 from backend.context.circuit_breaker import circuit_breaker_manager
 from backend.auth.dependencies import get_current_user, get_current_admin_user
-from backend.db.models import User
+from backend.db.models import User, Conversation
 from backend.utils.session_manager import session_manager
 from fastapi import FastAPI, HTTPException, Depends, status
+from sqlalchemy.orm import Session
 
 # Import new types and constants
 from backend.types.zones import Zone, ZoneType
@@ -103,7 +104,8 @@ async def health():
 @app.post("/chat", response_model=ChatResponse, tags=["Chat"])
 async def chat(
     request: ChatRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """
     Chat endpoint - REQUIRES AUTHENTICATION.
@@ -120,6 +122,8 @@ async def chat(
 
         # Track session in Redis for TTL management
         session_data = await session_manager.get_session(session_id)
+        is_new_session = session_data is None
+
         if not session_data:
             # New session - store metadata in Redis
             await session_manager.set_session(session_id, {
@@ -133,6 +137,26 @@ async def chat(
             # Existing session - update last activity (TTL auto-refreshed by get_session)
             session_data["last_activity"] = datetime.utcnow().isoformat()
             await session_manager.set_session(session_id, session_data)
+
+        # Create Conversation in database if it doesn't exist
+        if is_new_session:
+            existing_conv = db.query(Conversation).filter(
+                Conversation.conversation_id == session_id,
+                Conversation.user_id == current_user.user_id
+            ).first()
+
+            if not existing_conv:
+                # Extract title from first message
+                title = request.message[:50] + "..." if len(request.message) > 50 else request.message
+
+                new_conversation = Conversation(
+                    conversation_id=session_id,
+                    user_id=current_user.user_id,
+                    title=title
+                )
+                db.add(new_conversation)
+                db.commit()
+                logger.info(f"Created conversation {session_id} in database for user {current_user.email}")
 
         # Create or get pipeline instance
         if session_id not in sessions:
@@ -171,7 +195,8 @@ async def chat(
 @app.post("/chat/stream", tags=["Chat"])
 async def chat_stream(
     request: ChatRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """
     Stream chat responses using Server-Sent Events (SSE).
@@ -190,6 +215,8 @@ async def chat_stream(
 
             # Track session in Redis for TTL management
             session_data = await session_manager.get_session(session_id)
+            is_new_session = session_data is None
+
             if not session_data:
                 # New session - store metadata in Redis
                 await session_manager.set_session(session_id, {
@@ -203,6 +230,26 @@ async def chat_stream(
                 # Existing session - update last activity
                 session_data["last_activity"] = datetime.utcnow().isoformat()
                 await session_manager.set_session(session_id, session_data)
+
+            # Create Conversation in database if it doesn't exist
+            if is_new_session:
+                existing_conv = db.query(Conversation).filter(
+                    Conversation.conversation_id == session_id,
+                    Conversation.user_id == current_user.user_id
+                ).first()
+
+                if not existing_conv:
+                    # Extract title from first message
+                    title = request.message[:50] + "..." if len(request.message) > 50 else request.message
+
+                    new_conversation = Conversation(
+                        conversation_id=session_id,
+                        user_id=current_user.user_id,
+                        title=title
+                    )
+                    db.add(new_conversation)
+                    db.commit()
+                    logger.info(f"[STREAM] Created conversation {session_id} in database for user {current_user.email}")
 
             # Create or get pipeline instance
             if session_id not in sessions:
