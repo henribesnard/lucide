@@ -34,22 +34,12 @@ class LucidePipeline:
     ):
         self.session_id = session_id
         self.user_id = user_id
-        if settings.ENABLE_FAST_LLM:
-            fast_provider = settings.FAST_LLM_PROVIDER
+        if settings.ENABLE_MULTI_LLM:
+            # Slow LLM (DeepSeek) - par défaut, économique
             slow_provider = settings.SLOW_LLM_PROVIDER
-            fast_api_key = (
-                settings.FAST_LLM_API_KEY
-                or (settings.OPENAI_API_KEY if fast_provider == "openai" else settings.DEEPSEEK_API_KEY)
-            )
             slow_api_key = (
                 settings.SLOW_LLM_API_KEY
                 or (settings.OPENAI_API_KEY if slow_provider == "openai" else settings.DEEPSEEK_API_KEY)
-            )
-            self.fast_llm = LLMClient(
-                provider=fast_provider,
-                api_key=fast_api_key,
-                base_url=settings.DEEPSEEK_BASE_URL if fast_provider == "deepseek" else None,
-                model=settings.FAST_LLM_MODEL,
             )
             self.slow_llm = LLMClient(
                 provider=slow_provider,
@@ -57,10 +47,38 @@ class LucidePipeline:
                 base_url=settings.DEEPSEEK_BASE_URL if slow_provider == "deepseek" else None,
                 model=settings.SLOW_LLM_MODEL,
             )
-            llm_for_intent = self.fast_llm
-            llm_for_tools = self.fast_llm
-            llm_for_analysis = self.slow_llm
-            llm_for_response = self.slow_llm
+
+            # Medium LLM (GPT-4o-mini) - équilibré
+            medium_provider = settings.MEDIUM_LLM_PROVIDER
+            medium_api_key = (
+                settings.MEDIUM_LLM_API_KEY
+                or (settings.OPENAI_API_KEY if medium_provider == "openai" else settings.DEEPSEEK_API_KEY)
+            )
+            self.medium_llm = LLMClient(
+                provider=medium_provider,
+                api_key=medium_api_key,
+                base_url=settings.DEEPSEEK_BASE_URL if medium_provider == "deepseek" else None,
+                model=settings.MEDIUM_LLM_MODEL,
+            )
+
+            # Fast LLM (GPT-4o) - premium, rapide
+            fast_provider = settings.FAST_LLM_PROVIDER
+            fast_api_key = (
+                settings.FAST_LLM_API_KEY
+                or (settings.OPENAI_API_KEY if fast_provider == "openai" else settings.DEEPSEEK_API_KEY)
+            )
+            self.fast_llm = LLMClient(
+                provider=fast_provider,
+                api_key=fast_api_key,
+                base_url=settings.DEEPSEEK_BASE_URL if fast_provider == "deepseek" else None,
+                model=settings.FAST_LLM_MODEL,
+            )
+
+            # Use Medium for intent/tools, Fast for analysis/response by default
+            llm_for_intent = self.medium_llm
+            llm_for_tools = self.medium_llm
+            llm_for_analysis = self.fast_llm
+            llm_for_response = self.fast_llm
         else:
             self.llm = LLMClient(
                 provider=settings.LLM_PROVIDER,
@@ -87,32 +105,23 @@ class LucidePipeline:
         self.analysis_agent = AnalysisAgent(llm_for_analysis)
         self.response_agent = ResponseAgent(llm_for_response)
 
-    def _get_llm_for_model_type(self, model_type: str = "deepseek"):
+    def _get_llm_for_model_type(self, model_type: str = "slow"):
         """
         Retourne le LLM approprié selon le model_type.
-        - "deepseek" : DeepSeek (base, économique)
+        - "slow" : DeepSeek (par défaut, économique)
         - "medium" : GPT-4o-mini (équilibré)
         - "fast" : GPT-4o (premium, rapide)
         """
-        if not settings.ENABLE_FAST_LLM:
-            # Si ENABLE_FAST_LLM est désactivé, utiliser le LLM unique
+        if not settings.ENABLE_MULTI_LLM:
+            # Si ENABLE_MULTI_LLM est désactivé, utiliser le LLM unique
             return self.llm
 
-        if model_type == "deepseek":
-            # Créer un client DeepSeek spécifique
-            from backend.llm.client import LLMClient
-            return LLMClient(
-                provider="deepseek",
-                api_key=settings.DEEPSEEK_API_KEY,
-                base_url=settings.DEEPSEEK_BASE_URL,
-                model="deepseek-chat",
-            )
-        elif model_type == "medium":
-            # GPT-4o-mini (fast_llm)
-            return self.fast_llm
-        else:  # "fast"
-            # GPT-4o (slow_llm)
+        if model_type == "slow":
             return self.slow_llm
+        elif model_type == "medium":
+            return self.medium_llm
+        else:  # "fast"
+            return self.fast_llm
 
     def _needs_analysis(
         self,
@@ -146,7 +155,7 @@ class LucidePipeline:
         user_message: str,
         context: Dict[str, Any] = None,
         user_id: str = None,
-        model_type: str = "deepseek"
+        model_type: str = "slow"
     ) -> Dict[str, Any]:
         # Log and validate context (frontend may already inject text into user_message).
         if context:
@@ -216,6 +225,33 @@ class LucidePipeline:
         intent: IntentResult = await self.intent_agent.run(user_message, context=context)
         intent_latency = time.perf_counter() - intent_start
 
+        # Enrichir les entities avec le contexte si disponible
+        if context:
+            # Inject fixture_id/match_id into entities if not already present
+            if "fixture_id" in context and "fixture_id" not in intent.entities:
+                intent.entities["fixture_id"] = context["fixture_id"]
+            elif "match_id" in context and "fixture_id" not in intent.entities:
+                intent.entities["fixture_id"] = context["match_id"]
+
+            # Inject league_id if not already present
+            if "league_id" in context and "league_id" not in intent.entities:
+                intent.entities["league_id"] = context["league_id"]
+
+            # Inject team_id if not already present
+            if "team_id" in context and "team_id" not in intent.entities:
+                intent.entities["team_id"] = context["team_id"]
+
+            # Inject player_id if not already present
+            if "player_id" in context and "player_id" not in intent.entities:
+                intent.entities["player_id"] = context["player_id"]
+
+            # Inject season if not already present
+            if "season" in context and "season" not in intent.entities:
+                intent.entities["season"] = context["season"]
+
+            logger.info(f"Intent detected: {intent.intent} (needs_data={intent.needs_data}, confidence={intent.confidence})")
+            logger.info(f"Entities after context enrichment: {intent.entities}")
+
         tool_results: List[ToolCallResult] = []
         assistant_notes = "Aucun appel de tool requis."
         if intent.needs_data:
@@ -229,7 +265,7 @@ class LucidePipeline:
         else:
             tool_latency = 0.0
         # Best-effort check for critical data in match analysis
-        if intent.intent in {"analyse_rencontre", "match_analysis"}:
+        if intent.intent in {"analyse_rencontre", "match_analysis", "stats_final", "stats_live"}:
             required_tools = {
                 "fixtures_search",
                 "team_last_fixtures",

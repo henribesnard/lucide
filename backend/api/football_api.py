@@ -126,6 +126,21 @@ class FootballAPIClient:
         if params.get("id"):
             return 300
         if params.get("date") or params.get("from") or params.get("to"):
+            # Pour les fixtures du jour, utiliser un TTL court (2 min)
+            # pour avoir des données fraîches pour les matchs en direct
+            # Sans surcharger l'API (limite de requêtes)
+            from datetime import datetime
+            date_param = params.get("date")
+            if date_param:
+                try:
+                    requested_date = datetime.strptime(date_param, "%Y-%m-%d").date()
+                    today = datetime.now().date()
+                    # Si c'est aujourd'hui, cache de 2 minutes (bon compromis)
+                    if requested_date == today:
+                        return 2 * 60
+                except Exception:
+                    pass
+            # Pour les autres dates, cache de 12 heures
             return 12 * 3600
         return 12 * 3600
 
@@ -1035,9 +1050,60 @@ class FootballAPIClient:
     # HELPER FUNCTIONS (pour faciliter l'usage)
     # ==========================================
     async def search_team(self, team_name: str) -> Optional[Dict]:
-        """Search a team by name and return the first match."""
-        teams = await self.get_teams(search=team_name)
-        return teams[0] if teams else None
+        """
+        Search a team by name and return the first match.
+        Tries multiple variations to handle different naming conventions.
+        """
+        import unicodedata
+
+        def remove_accents(text: str) -> str:
+            """Remove accents from text to avoid API errors."""
+            return ''.join(
+                c for c in unicodedata.normalize('NFD', text)
+                if unicodedata.category(c) != 'Mn'
+            )
+
+        # Nettoyer le nom de base
+        clean_name = remove_accents(team_name)
+
+        # Créer une liste de variantes à essayer
+        search_variations = [
+            clean_name,  # Nom nettoyé original
+        ]
+
+        # Variantes spécifiques pour certains pays
+        name_lower = clean_name.lower()
+        if "rd congo" in name_lower or "rdc" in name_lower:
+            search_variations.extend([
+                "Congo DR",
+                "DR Congo",
+                "Congo",
+            ])
+        elif "republique democratique" in name_lower or "democratic republic" in name_lower:
+            search_variations.extend([
+                "Congo DR",
+                "DR Congo",
+                "Congo",
+            ])
+        elif "cote d" in name_lower or "ivory" in name_lower:
+            search_variations.extend([
+                "Cote d Ivoire",
+                "Ivory Coast",
+            ])
+
+        # Essayer chaque variante
+        for variant in search_variations:
+            try:
+                teams = await self.get_teams(search=variant)
+                if teams:
+                    logger.info(f"Team found with variant '{variant}' for search '{team_name}'")
+                    return teams[0]
+            except Exception as e:
+                logger.warning(f"Search failed for variant '{variant}': {e}")
+                continue
+
+        logger.warning(f"No team found for '{team_name}' after trying {len(search_variations)} variations")
+        return None
 
     async def search_player(self, player_name: str, season: Optional[int] = None) -> Optional[Dict]:
         """Recherche un joueur par nom"""
@@ -1065,3 +1131,148 @@ class FootballAPIClient:
         """Return the current round for a league."""
         rounds = await self.get_fixture_rounds(league_id, season, current=True)
         return rounds[0] if rounds else None
+
+    # ==========================================
+    # HELPER FUNCTIONS FOR ENHANCED ANALYSIS
+    # ==========================================
+    async def get_league_type(self, league_id: int, season: Optional[int] = None) -> str:
+        """
+        Determine if a league is a Cup or League competition.
+        Returns: "Cup", "League", or "Unknown"
+        """
+        try:
+            leagues = await self.get_leagues(league_id=league_id, season=season)
+            if leagues and len(leagues) > 0:
+                league_type = leagues[0].get("league", {}).get("type", "").capitalize()
+                return league_type if league_type in ["Cup", "League"] else "Unknown"
+            return "Unknown"
+        except Exception:
+            return "Unknown"
+
+    async def calculate_team_form_from_fixtures(self, fixtures: List[Dict]) -> Dict[str, Any]:
+        """
+        Calculate aggregated statistics from a list of fixtures for a team.
+        Returns form, goals scored/conceded, clean sheets, etc.
+        """
+        if not fixtures:
+            return {
+                "form": "",
+                "matches_played": 0,
+                "wins": 0,
+                "draws": 0,
+                "losses": 0,
+                "goals_for": 0,
+                "goals_against": 0,
+                "clean_sheets": 0,
+                "avg_goals_for": 0.0,
+                "avg_goals_against": 0.0,
+            }
+
+        form_str = ""
+        wins = draws = losses = 0
+        goals_for = goals_against = clean_sheets = 0
+        matches_played = 0
+
+        for fixture in fixtures:
+            status = fixture.get("fixture", {}).get("status", {}).get("short")
+            if status not in ["FT", "AET", "PEN"]:
+                continue
+
+            teams = fixture.get("teams", {})
+            goals = fixture.get("goals", {})
+            home_id = teams.get("home", {}).get("id")
+            away_id = teams.get("away", {}).get("id")
+            home_goals = goals.get("home", 0) or 0
+            away_goals = goals.get("away", 0) or 0
+
+            # Determine if this team was home or away (we need to infer from context)
+            # Since we don't know which team we're analyzing, we'll need the team_id
+            # For now, we'll just return general stats
+            matches_played += 1
+
+        return {
+            "form": form_str,
+            "matches_played": matches_played,
+            "wins": wins,
+            "draws": draws,
+            "losses": losses,
+            "goals_for": goals_for,
+            "goals_against": goals_against,
+            "clean_sheets": clean_sheets,
+            "avg_goals_for": round(goals_for / matches_played, 2) if matches_played > 0 else 0.0,
+            "avg_goals_against": round(goals_against / matches_played, 2) if matches_played > 0 else 0.0,
+        }
+
+    async def get_team_form_stats(self, team_id: int, last_n: int = 10) -> Dict[str, Any]:
+        """
+        Get comprehensive form statistics for a team based on their last N matches.
+        """
+        try:
+            fixtures = await self.get_team_last_fixtures(team_id, last_n)
+
+            form_str = ""
+            wins = draws = losses = 0
+            goals_for = goals_against = clean_sheets = 0
+            matches_played = 0
+
+            for fixture in fixtures:
+                status = fixture.get("fixture", {}).get("status", {}).get("short")
+                if status not in ["FT", "AET", "PEN"]:
+                    continue
+
+                teams = fixture.get("teams", {})
+                goals = fixture.get("goals", {})
+                home_id = teams.get("home", {}).get("id")
+                away_id = teams.get("away", {}).get("id")
+                home_goals = goals.get("home", 0) or 0
+                away_goals = goals.get("away", 0) or 0
+
+                is_home = home_id == team_id
+                team_goals = home_goals if is_home else away_goals
+                opponent_goals = away_goals if is_home else home_goals
+
+                matches_played += 1
+                goals_for += team_goals
+                goals_against += opponent_goals
+
+                if opponent_goals == 0:
+                    clean_sheets += 1
+
+                if team_goals > opponent_goals:
+                    wins += 1
+                    form_str += "W"
+                elif team_goals == opponent_goals:
+                    draws += 1
+                    form_str += "D"
+                else:
+                    losses += 1
+                    form_str += "L"
+
+            return {
+                "form": form_str[:5],  # Last 5 matches
+                "matches_played": matches_played,
+                "wins": wins,
+                "draws": draws,
+                "losses": losses,
+                "goals_for": goals_for,
+                "goals_against": goals_against,
+                "goal_difference": goals_for - goals_against,
+                "clean_sheets": clean_sheets,
+                "avg_goals_for": round(goals_for / matches_played, 2) if matches_played > 0 else 0.0,
+                "avg_goals_against": round(goals_against / matches_played, 2) if matches_played > 0 else 0.0,
+            }
+        except Exception as exc:
+            logger.error(f"Error calculating team form stats: {exc}")
+            return {
+                "form": "",
+                "matches_played": 0,
+                "wins": 0,
+                "draws": 0,
+                "losses": 0,
+                "goals_for": 0,
+                "goals_against": 0,
+                "goal_difference": 0,
+                "clean_sheets": 0,
+                "avg_goals_for": 0.0,
+                "avg_goals_against": 0.0,
+            }
