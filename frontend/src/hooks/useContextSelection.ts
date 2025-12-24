@@ -98,11 +98,7 @@ export const useContextSelection = () => {
 
   const handleSetPlayer = useCallback((newPlayer: Player | null) => {
     setPlayer(newPlayer);
-    if (newPlayer) {
-      setMatch(null);
-      setTeam(null);
-      setLeague(null);
-    }
+    // Un joueur peut coexister avec match/team/league, on ne clear rien
   }, []);
 
   const clearAll = useCallback(() => {
