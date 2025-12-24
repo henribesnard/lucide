@@ -22,12 +22,16 @@ class Settings(BaseSettings):
     DEEPSEEK_MODEL: str = "deepseek-chat"
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
-    FAST_LLM_PROVIDER: Literal["deepseek", "openai"] = "openai"
-    FAST_LLM_MODEL: str = "gpt-4o-mini"
-    FAST_LLM_API_KEY: str = ""
+    # Multi-LLM support: Slow (DeepSeek), Medium (GPT-4o-mini), Fast (GPT-4o)
     SLOW_LLM_PROVIDER: Literal["deepseek", "openai"] = "deepseek"
     SLOW_LLM_MODEL: str = "deepseek-chat"
     SLOW_LLM_API_KEY: str = ""
+    MEDIUM_LLM_PROVIDER: Literal["deepseek", "openai"] = "openai"
+    MEDIUM_LLM_MODEL: str = "gpt-4o-mini"
+    MEDIUM_LLM_API_KEY: str = ""
+    FAST_LLM_PROVIDER: Literal["deepseek", "openai"] = "openai"
+    FAST_LLM_MODEL: str = "gpt-4o"
+    FAST_LLM_API_KEY: str = ""
 
     # Football API
     FOOTBALL_API_KEY: str = ""
@@ -42,8 +46,11 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     ENABLE_PARALLEL_API_CALLS: bool = True
     MAX_PARALLEL_TOOL_CALLS: int = 5
-    ENABLE_FAST_LLM: bool = False
+    ENABLE_MULTI_LLM: bool = False
     ENABLE_SMART_SKIP_ANALYSIS: bool = False
+
+    # CORS - comma-separated list of allowed origins
+    CORS_ORIGINS: str = "http://localhost,http://localhost:3000,http://localhost:3001,http://localhost:3010,http://localhost:8000,http://localhost:8001"
 
 
 settings = Settings()

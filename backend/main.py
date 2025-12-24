@@ -18,6 +18,7 @@ from backend.context.context_manager import ContextManager
 from backend.context.circuit_breaker import circuit_breaker_manager
 from backend.auth.dependencies import get_current_user, get_current_admin_user
 from backend.db.models import User
+from backend.utils.session_manager import session_manager
 from fastapi import FastAPI, HTTPException, Depends, status
 
 # Import new types and constants
@@ -39,18 +40,13 @@ app = FastAPI(
     version="2.0.0",
 )
 
-origins = [
-    "http://localhost",
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://localhost:3010",
-    "http://localhost:8000",
-    "http://localhost:8001",
-]
+# CORS configuration from environment
+cors_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]
+logger.info(f"CORS origins: {cors_origins}")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -69,7 +65,7 @@ class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
     context: Optional[Dict[str, Any]] = None
-    model_type: Optional[str] = "deepseek"  # "deepseek" (base), "medium" (gpt-4o-mini), "fast" (gpt-4o)
+    model_type: Optional[str] = "slow"  # "slow" (DeepSeek, par défaut), "medium" (GPT-4o-mini), "fast" (GPT-4o)
 
 
 class ChatResponse(BaseModel):
@@ -116,33 +112,45 @@ async def chat(
     Session is automatically created/retrieved per user.
     """
     try:
-        # Use user_id as session_id for user isolation, or request.session_id if provided (for multi-session per user possibility in future)
+        # Use user_id as session_id for user isolation, or request.session_id if provided
         if request.session_id:
-             # TODO: specific check if user owns this session_id if we store session ownership
              session_id = request.session_id
         else:
              session_id = f"user_{current_user.user_id}"
 
+        # Track session in Redis for TTL management
+        session_data = await session_manager.get_session(session_id)
+        if not session_data:
+            # New session - store metadata in Redis
+            await session_manager.set_session(session_id, {
+                "user_id": str(current_user.user_id),
+                "email": current_user.email,
+                "created_at": datetime.utcnow().isoformat(),
+                "last_activity": datetime.utcnow().isoformat()
+            })
+            logger.info(f"Session {session_id} registered in Redis")
+        else:
+            # Existing session - update last activity (TTL auto-refreshed by get_session)
+            session_data["last_activity"] = datetime.utcnow().isoformat()
+            await session_manager.set_session(session_id, session_data)
+
+        # Create or get pipeline instance
         if session_id not in sessions:
-            logger.info(f"Creating new session for user {current_user.email} (ID: {session_id})")
-            sessions[session_id] = LucidePipeline(
-                session_id=session_id
-            )
+            logger.info(f"Creating new pipeline for user {current_user.email} (ID: {session_id})")
+            sessions[session_id] = LucidePipeline(session_id=session_id)
 
         pipeline = sessions[session_id]
         message_to_process = request.message
         if request.context:
             logger.info(f"Processing with context: {request.context}")
         logger.info(f"Processing message for session {session_id}: {message_to_process[:120]}...")
-        
-        # We need to ensure the pipeline process method accepts user_id if we want to pass it down further
+
         result = await pipeline.process(
             message_to_process,
             context=request.context,
             user_id=str(current_user.user_id),
-            model_type=request.model_type or "deepseek"
+            model_type=request.model_type or "slow"
         )
-
 
         intent_obj = result["intent"]
         tool_names = [tool.name for tool in result["tool_results"]]
@@ -180,8 +188,25 @@ async def chat_stream(
             else:
                 session_id = f"user_{current_user.user_id}"
 
+            # Track session in Redis for TTL management
+            session_data = await session_manager.get_session(session_id)
+            if not session_data:
+                # New session - store metadata in Redis
+                await session_manager.set_session(session_id, {
+                    "user_id": str(current_user.user_id),
+                    "email": current_user.email,
+                    "created_at": datetime.utcnow().isoformat(),
+                    "last_activity": datetime.utcnow().isoformat()
+                })
+                logger.info(f"[STREAM] Session {session_id} registered in Redis")
+            else:
+                # Existing session - update last activity
+                session_data["last_activity"] = datetime.utcnow().isoformat()
+                await session_manager.set_session(session_id, session_data)
+
+            # Create or get pipeline instance
             if session_id not in sessions:
-                logger.info(f"Creating new session for user {current_user.email} (ID: {session_id})")
+                logger.info(f"[STREAM] Creating new pipeline for user {current_user.email} (ID: {session_id})")
                 sessions[session_id] = LucidePipeline(session_id=session_id)
 
             pipeline = sessions[session_id]
@@ -199,7 +224,7 @@ async def chat_stream(
                 message_to_process,
                 context=request.context,
                 user_id=str(current_user.user_id),
-                model_type=request.model_type or "deepseek"
+                model_type=request.model_type or "slow"
             )
 
             intent_obj = result["intent"]
@@ -245,8 +270,8 @@ async def delete_session(
     current_user: User = Depends(get_current_user)
 ):
     """Delete a session - Only owner can delete."""
-    
-    # Simple ownership check logic for now: 
+
+    # Simple ownership check logic for now:
     # If session_id starts with "user_", it must match the current user
     if session_id.startswith("user_"):
         expected_session_id = f"user_{current_user.user_id}"
@@ -256,10 +281,23 @@ async def delete_session(
                 detail="Cannot delete another user's session"
             )
 
+    # Delete from both in-memory and Redis
+    session_found = False
+
     if session_id in sessions:
         await sessions[session_id].close()
         del sessions[session_id]
+        session_found = True
+
+    # Delete from Redis
+    redis_deleted = await session_manager.delete_session(session_id)
+    if redis_deleted:
+        session_found = True
+
+    if session_found:
+        logger.info(f"Session {session_id} deleted (in-memory + Redis)")
         return {"message": f"Session {session_id} deleted"}
+
     raise HTTPException(status_code=404, detail="Session not found")
 
 
@@ -268,12 +306,13 @@ async def startup_event():
     global football_client, context_manager
     logger.info("LUCIDE API starting up...")
     logger.info(f"LLM Provider: {settings.LLM_PROVIDER}")
-    logger.info(f"ENABLE_FAST_LLM: {settings.ENABLE_FAST_LLM}")
+    logger.info(f"ENABLE_MULTI_LLM: {settings.ENABLE_MULTI_LLM}")
     logger.info(f"ENABLE_REDIS_CACHE: {settings.ENABLE_REDIS_CACHE}")
     logger.info(f"ENABLE_PARALLEL_API_CALLS: {settings.ENABLE_PARALLEL_API_CALLS}")
-    if settings.ENABLE_FAST_LLM:
+    if settings.ENABLE_MULTI_LLM:
+        logger.info(f"Slow LLM (default): {settings.SLOW_LLM_PROVIDER}/{settings.SLOW_LLM_MODEL}")
+        logger.info(f"Medium LLM: {settings.MEDIUM_LLM_PROVIDER}/{settings.MEDIUM_LLM_MODEL}")
         logger.info(f"Fast LLM: {settings.FAST_LLM_PROVIDER}/{settings.FAST_LLM_MODEL}")
-        logger.info(f"Slow LLM: {settings.SLOW_LLM_PROVIDER}/{settings.SLOW_LLM_MODEL}")
 
     # Initialize database
     try:
@@ -282,6 +321,14 @@ async def startup_event():
         logger.info("Database initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
+
+    # Initialize session manager
+    try:
+        logger.info("Initializing session manager...")
+        await session_manager.initialize()
+        logger.info("Session manager initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize session manager: {e}")
 
     football_client = FootballAPIClient(api_key=settings.FOOTBALL_API_KEY)
 
@@ -298,10 +345,19 @@ async def startup_event():
 async def shutdown_event():
     global football_client, context_manager
     logger.info("LUCIDE API shutting down...")
+
+    # Close all active pipelines
     for _, pipeline in sessions.items():
         await pipeline.close()
+
+    # Close session manager
+    await session_manager.close()
+
+    # Close football API client
     if football_client:
         await football_client.close()
+
+    # Close context manager
     if context_manager:
         await context_manager.close()
 
