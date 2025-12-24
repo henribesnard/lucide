@@ -43,31 +43,38 @@ export const useContextSelection = () => {
       context_type: contextType,
     };
 
+    // Ajouter les infos de match si présent
     if (match) {
       ctx.match_id = match.id;
       ctx.league_id = match.league.id;
       ctx.home_team_id = match.teams.home.id;
       ctx.away_team_id = match.teams.away.id;
       ctx.match_date = match.date;
-    } else if (contextType === 'league_team' && league && team) {
+    }
+    // Ajouter les infos de team si présent (et pas de match)
+    else if (team) {
+      ctx.team_id = team.id;
+      ctx.team_name = team.name;
+      ctx.team_code = team.code;
+      // Ajouter league si présent avec team
+      if (league) {
+        ctx.league_id = league.id;
+        ctx.league_name = league.name;
+        ctx.league_country = league.country;
+      }
+    }
+    // Ajouter les infos de league si présent seul
+    else if (league) {
       ctx.league_id = league.id;
       ctx.league_name = league.name;
       ctx.league_country = league.country;
-      ctx.team_id = team.id;
-      ctx.team_name = team.name;
-      ctx.team_code = team.code;
-    } else if (team) {
-      ctx.team_id = team.id;
-      ctx.team_name = team.name;
-      ctx.team_code = team.code;
-    } else if (player) {
+    }
+
+    // TOUJOURS ajouter les infos du joueur si présent (en plus du reste)
+    if (player) {
       ctx.player_id = player.id;
       ctx.player_name = player.name;
       ctx.position = player.position;
-    } else if (league) {
-      ctx.league_id = league.id;
-      ctx.league_name = league.name;
-      ctx.league_country = league.country;
     }
 
     return ctx;
