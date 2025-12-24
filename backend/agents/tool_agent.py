@@ -817,6 +817,97 @@ class ToolAgent:
             }
             return tool_result, tool_message
 
+    async def _force_player_stats_tools(
+        self,
+        context: Optional[Dict[str, Any]],
+        tool_results: List[ToolCallResult],
+    ) -> List[ToolCallResult]:
+        """
+        Force player stats tools when player context is provided.
+        - If match_id + player_id: fetch fixture_players for that specific match
+        - If team_id + player_id (no match): fetch player_statistics for the season
+        """
+        if not context or "player_id" not in context:
+            return tool_results
+
+        player_id = context.get("player_id")
+        match_id = context.get("match_id") or context.get("fixture_id")
+        team_id = context.get("team_id")
+        season = context.get("season") or _default_season_for_request("", context)
+
+        logger.info("="*80)
+        logger.info("DEBUT FORCE PLAYER STATS TOOLS")
+        logger.info(f"Player ID: {player_id}")
+        logger.info(f"Match ID: {match_id}")
+        logger.info(f"Team ID: {team_id}")
+        logger.info(f"Season: {season}")
+
+        # Case 1: Match + Player = player stats in that specific match
+        if match_id and player_id:
+            logger.info(f"Context: MATCH mode - fetching player stats for match {match_id}")
+
+            # Check if fixture_players already called for this match
+            has_fixture_players = any(
+                tr.name == "fixture_players"
+                and tr.arguments.get("fixture_id") == match_id
+                for tr in tool_results
+            )
+
+            if not has_fixture_players:
+                logger.info(f"  -> Force-executing fixture_players for match {match_id}")
+                result = await execute_tool(
+                    self.api_client,
+                    "fixture_players",
+                    {"fixture_id": match_id},
+                )
+                tool_results.append(
+                    ToolCallResult(
+                        name="fixture_players",
+                        arguments={"fixture_id": match_id},
+                        output=result,
+                        error=result.get("error") if isinstance(result, dict) else None,
+                    )
+                )
+                logger.info(f"  -> Retrieved player stats for match {match_id}")
+            else:
+                logger.info(f"  -> fixture_players already called for match {match_id}")
+
+        # Case 2: Team + Player (no match) = player season stats
+        elif team_id and player_id and not match_id:
+            logger.info(f"Context: TEAM mode - fetching player season stats for player {player_id}")
+
+            # Check if player_statistics already called for this player
+            has_player_stats = any(
+                tr.name == "player_statistics"
+                and tr.arguments.get("player_id") == player_id
+                and tr.arguments.get("season") == season
+                for tr in tool_results
+            )
+
+            if not has_player_stats:
+                logger.info(f"  -> Force-executing player_statistics for player {player_id}, season {season}")
+                result = await execute_tool(
+                    self.api_client,
+                    "player_statistics",
+                    {"player_id": player_id, "season": season},
+                )
+                tool_results.append(
+                    ToolCallResult(
+                        name="player_statistics",
+                        arguments={"player_id": player_id, "season": season},
+                        output=result,
+                        error=result.get("error") if isinstance(result, dict) else None,
+                    )
+                )
+                logger.info(f"  -> Retrieved season stats for player {player_id}")
+            else:
+                logger.info(f"  -> player_statistics already called for player {player_id}")
+
+        logger.info("FIN FORCE PLAYER STATS TOOLS")
+        logger.info("="*80)
+
+        return tool_results
+
     async def run(
         self,
         user_message: str,
@@ -1016,5 +1107,8 @@ class ToolAgent:
 
         # After LLM loop, force missing critical tools for match analysis if needed
         tool_results = await self._force_critical_tools_for_match_analysis(intent, tool_results)
+
+        # Force player stats tools if player context is provided
+        tool_results = await self._force_player_stats_tools(context, tool_results)
 
         return tool_results, assistant_notes

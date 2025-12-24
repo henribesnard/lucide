@@ -122,6 +122,14 @@ Exemple de JSON attendu:
 Structure attendue (dans brief et data_points):
 - Contexte du match: date, competition, stade si dispo.
 
+- REGLE CRITIQUE - IDENTIFIANTS TECHNIQUES:
+  * NE JAMAIS mentionner les identifiants techniques dans brief ou data_points
+  * Identifiants a CACHER: fixture_id, match_id, team_id, player_id, league_id, season_id
+  * Exemple INTERDIT: "Le joueur avec l'ID 1379133..."
+  * Exemple CORRECT: "Le joueur Ben Lecomte..."
+  * TOUJOURS utiliser les noms (joueur, equipe, competition) au lieu des IDs
+  * Ces IDs sont transparents pour l'utilisateur et ne doivent JAMAIS apparaitre
+
 - STATUT DU MATCH (CRITIQUE - ADAPTER LE TEMPS):
   * TOUJOURS verifier le statut du match dans fixture.status.short ou fixtures_search
   * Statuts possibles: NS (pas commence), LIVE/1H/2H/HT (en cours), FT (termine)
@@ -193,6 +201,19 @@ REGLES CRITIQUES:
 7. Si fixture_lineups du match cible est vide, utiliser fixture_lineups des derniers matchs
 8. Ne liste dans gaps QUE les informations critiques vraiment absentes
 
+- CONTEXTE JOUEUR (CRITIQUE):
+  * Si player_id est present dans le contexte avec match_id:
+    - Focus sur les STATS DU JOUEUR DANS CE MATCH SPECIFIQUE
+    - Utilise fixture_players pour recuperer sa performance dans ce match
+    - Indique: note, minutes jouees, buts, passes decisives, tirs, duels, passes reussies
+    - Compare sa performance a celle des autres joueurs du match
+  * Si player_id est present dans le contexte avec team_id (SANS match_id):
+    - Focus sur les STATS GLOBALES DU JOUEUR POUR LA SAISON
+    - Utilise player_statistics pour recuperer ses statistiques saison
+    - Indique: matchs joues, buts, passes decisives, note moyenne, tirs/match, passes/match
+    - Compare ses stats a celles des autres joueurs de l'equipe ou de la ligue
+  * TOUJOURS utiliser le nom du joueur (JAMAIS l'ID technique)
+
 Ne pas abandonner en cas de donnees manquantes: utilise les donnees alternatives (team_form_stats au lieu de team_statistics, lineups des derniers matchs, etc.).
 """
 
@@ -207,6 +228,14 @@ Regles generales:
 - Si data_points contient "Season: YYYY", utilise EXACTEMENT cette annee (ne convertis pas en plage type 2024/2025).
 - CRITIQUE: Si des informations manquent, indique-le SANS mentionner API-Football. Dis simplement "Cette information n'est pas disponible" ou "Je ne dispose pas de cette donnee".
 - UNIQUEMENT cite API-Football quand tu as effectivement des donnees concretes a presenter.
+
+REGLE CRITIQUE - IDENTIFIANTS TECHNIQUES:
+- NE JAMAIS mentionner les identifiants techniques dans ta reponse
+- Identifiants a CACHER: fixture_id, match_id, team_id, player_id, league_id, season_id
+- Exemple INTERDIT: "Le joueur avec l'ID 1379133..."
+- Exemple CORRECT: "Le joueur Ben Lecomte..."
+- TOUJOURS utiliser les noms (joueur, equipe, competition) au lieu des IDs
+- Ces IDs sont transparents pour l'utilisateur et ne doivent JAMAIS apparaitre dans ta reponse
 
 REGLES CRITIQUES POUR LE STATUT DU MATCH:
 - Si data_points indique statut LIVE/1H/2H/HT (match en cours): utilise le PRESENT
@@ -252,6 +281,19 @@ REGLES CRITIQUES POUR LES BLESSURES:
 REGLES CRITIQUES POUR LA JOURNEE:
 - Si brief ou data_points mentionne "1ere journee", "Group Stage - 1", etc., MENTIONNE-LE explicitement dans ta reponse.
 - Exemple: "Il s'agit de la 1ere journee de la phase de groupes de la CAN 2025."
+
+REGLES CRITIQUES POUR LE CONTEXTE JOUEUR:
+- Si data_points contient des stats de joueur d'un match specifique (fixture_players):
+  * Focus sur la PERFORMANCE DU JOUEUR DANS CE MATCH UNIQUE
+  * Exemple: "Ben Lecomte a joue 90 minutes lors de Fulham vs Nottingham. Il a realise 6 arrets avec une note de 7.2"
+  * Presente: note, minutes jouees, buts, passes decisives, tirs, duels, passes reussies, actions defensives
+  * Compare sa performance a celle des autres joueurs du match si pertinent
+- Si data_points contient des stats de joueur pour la saison (player_statistics):
+  * Focus sur les STATISTIQUES GLOBALES DU JOUEUR POUR LA SAISON
+  * Exemple: "Ben Lecomte a participe a 18 matchs cette saison en Premier League. Il affiche une note moyenne de 6.8 avec 72 arrets"
+  * Presente: matchs joues, buts, passes decisives, note moyenne, statistiques par match (tirs, passes, duels)
+  * Compare ses stats a celles des autres joueurs de sa position ou de la ligue si pertinent
+- TOUJOURS utiliser le nom du joueur (JAMAIS son ID technique)
 
 Format de reponse selon le statut du match:
 
