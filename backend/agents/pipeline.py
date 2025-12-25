@@ -157,7 +157,8 @@ class LucidePipeline:
         user_message: str,
         context: Dict[str, Any] = None,
         user_id: str = None,
-        model_type: str = "slow"
+        model_type: str = "slow",
+        language: str = "fr"
     ) -> Dict[str, Any]:
         # Log and validate context (frontend may already inject text into user_message).
         if context:
@@ -294,6 +295,7 @@ class LucidePipeline:
                     intent=intent,
                     tool_results=tool_results,
                     llm_client=selected_llm,
+                    language=language,
                     context=context,
                 )
                 if causal_result:
@@ -331,6 +333,7 @@ class LucidePipeline:
             intent=intent,
             analysis=analysis,
             context=context,
+            language=language,
         )
         response_latency = time.perf_counter() - response_start
         total_latency = time.perf_counter() - start_total

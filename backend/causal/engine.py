@@ -3,18 +3,20 @@ Integration engine for causal analysis (rules + metrics + LLM synthesis).
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Literal
 import json
 import logging
 import re
 
 from backend.agents.types import ToolCallResult, IntentResult
 from backend.llm.client import LLMClient
+from backend.prompts_i18n import get_causal_analysis_prompt
 from .calculator import CausalCalculator
 from .prompts import QuestionType, get_prompt_for_question
 from .rules import CausalRuleEngine, prepare_match_data_for_rules
 
 logger = logging.getLogger(__name__)
+Language = Literal["fr", "en"]
 
 
 @dataclass
@@ -48,6 +50,7 @@ class CausalEngine:
         intent: IntentResult,
         tool_results: List[ToolCallResult],
         context: Optional[Dict[str, Any]] = None,
+        language: Language = "fr",
     ) -> CausalAnalysisResult:
         fixture = _get_tool_output(tool_results, "fixtures_search") or {}
         fixture_summary = _first_fixture(fixture)
@@ -77,8 +80,8 @@ class CausalEngine:
 
         rule_findings = self.rules_engine.analyze(match_data)
         question_type = self._classify_question(question)
-        prompt = self._build_prompt(question, question_type, match_data, stats_list, rule_findings, metrics)
-        llm_analysis = await self._call_llm(prompt)
+        prompt = self._build_prompt(question, question_type, match_data, stats_list, rule_findings, metrics, language)
+        llm_analysis = await self._call_llm(prompt, language)
         confidence = self._assess_confidence(rule_findings, metrics)
 
         return CausalAnalysisResult(
@@ -107,21 +110,19 @@ class CausalEngine:
         stats_list: List[Dict[str, Any]],
         rule_findings: List[Dict[str, Any]],
         metrics: Dict[str, Any],
+        language: Language = "fr",
     ) -> str:
         enriched_context = self._format_context(rule_findings, metrics)
         match_json = json.dumps(match_data, indent=2, ensure_ascii=True)
         stats_json = json.dumps(stats_list, indent=2, ensure_ascii=True)
-        return get_prompt_for_question(
-            question_type,
-            question,
+
+        # Use multilingual causal analysis prompt
+        return get_causal_analysis_prompt(
+            question=question,
             match_data=match_json,
             stats=stats_json,
-            factual_data=match_json,
             enriched_context=enriched_context,
-            actual_scenario=match_json,
-            historical_data="[]",
-            group_a_data=match_json,
-            group_b_data=match_json,
+            language=language
         )
 
     def _format_context(self, findings: List[Dict[str, Any]], metrics: Dict[str, Any]) -> str:
@@ -209,9 +210,13 @@ class CausalEngine:
         ]
         return {"count": len(missing), "players": [m.get("player") for m in missing]}
 
-    async def _call_llm(self, prompt: str) -> str:
+    async def _call_llm(self, prompt: str, language: Language = "fr") -> str:
+        system_message = {
+            "fr": "Tu es un analyste football expert et méthodique.",
+            "en": "You are an expert and methodical football analyst."
+        }
         messages = [
-            {"role": "system", "content": "You are a careful football analyst."},
+            {"role": "system", "content": system_message.get(language, system_message["fr"])},
             {"role": "user", "content": prompt},
         ]
         response = await self.llm.chat_completion(messages=messages, temperature=0.2, max_tokens=700)

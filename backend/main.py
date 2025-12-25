@@ -67,6 +67,7 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = None
     context: Optional[Dict[str, Any]] = None
     model_type: Optional[str] = "slow"  # "slow" (DeepSeek, par défaut), "medium" (GPT-4o-mini), "fast" (GPT-4o)
+    language: Optional[str] = "fr"  # "fr" (français) ou "en" (anglais)
 
 
 class ChatResponse(BaseModel):
@@ -170,11 +171,16 @@ async def chat(
             logger.info(f"Processing with context: {request.context}")
         logger.info(f"Processing message for session {session_id}: {message_to_process[:120]}...")
 
+        # Determine language: request > user preference > default 'fr'
+        language = request.language or getattr(current_user, 'preferred_language', 'fr') or 'fr'
+        logger.info(f"Processing with language: {language}")
+
         result = await pipeline.process(
             message_to_process,
             context=request.context,
             user_id=str(current_user.user_id),
-            model_type=request.model_type or "slow"
+            model_type=request.model_type or "slow",
+            language=language
         )
 
         intent_obj = result["intent"]
@@ -265,6 +271,10 @@ async def chat_stream(
                 logger.info(f"Processing with context: {request.context}")
             logger.info(f"[STREAM] Processing message for session {session_id}: {message_to_process[:120]}...")
 
+            # Determine language: request > user preference > default 'fr'
+            language = request.language or getattr(current_user, 'preferred_language', 'fr') or 'fr'
+            logger.info(f"[STREAM] Processing with language: {language}")
+
             # Send status update
             yield f"data: {json.dumps({'type': 'status', 'message': 'Processing your request...'})}\n\n"
 
@@ -273,7 +283,8 @@ async def chat_stream(
                 message_to_process,
                 context=request.context,
                 user_id=str(current_user.user_id),
-                model_type=request.model_type or "slow"
+                model_type=request.model_type or "slow",
+                language=language
             )
 
             intent_obj = result["intent"]

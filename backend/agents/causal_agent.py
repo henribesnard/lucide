@@ -51,9 +51,10 @@ class CausalAgent:
         tool_results: List[ToolCallResult],
         llm_client: LLMClient,
         context: Optional[Dict] = None,
+        language: str = "fr",
     ) -> Optional[CausalAnalysisResult]:
         engine = CausalEngine(llm_client)
-        result = await engine.analyze(question, intent, tool_results, context=context)
+        result = await engine.analyze(question, intent, tool_results, context=context, language=language)
 
         if self.enable_cache:
             self._update_cache(tool_results, result)

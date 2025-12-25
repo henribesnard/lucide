@@ -41,6 +41,9 @@ class User(Base):
     subscription_end_date = Column(DateTime, nullable=True)
     trial_end_date = Column(DateTime, nullable=True)
 
+    # User preferences
+    preferred_language = Column(String(2), default="fr", nullable=False)  # 'fr' or 'en'
+
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     last_login = Column(DateTime, nullable=True)

@@ -182,6 +182,43 @@ async def get_me(current_user: User = Depends(get_current_user)):
         "is_superuser": current_user.is_superuser,
         "subscription_tier": current_user.subscription_tier.value,
         "subscription_status": current_user.subscription_status.value,
+        "preferred_language": getattr(current_user, 'preferred_language', 'fr'),
         "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
         "last_login": current_user.last_login.isoformat() if current_user.last_login else None,
+    }
+
+
+@router.patch("/me/language")
+async def update_language(
+    language: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Update user's preferred language.
+
+    Args:
+        language: Language code ('fr' or 'en')
+    """
+    from backend.utils.i18n import validate_language, get_success_message, get_error_message
+
+    # Validate language
+    try:
+        validated_language = validate_language(language)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=get_error_message("invalid_language", language)
+        )
+
+    # Update user's preferred language
+    current_user.preferred_language = validated_language
+    db.commit()
+    db.refresh(current_user)
+
+    logger.info(f"Updated language preference for user {current_user.email} to {validated_language}")
+
+    return {
+        "message": get_success_message("language_updated", validated_language),
+        "preferred_language": validated_language
     }
