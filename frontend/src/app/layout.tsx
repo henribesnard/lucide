@@ -1,23 +1,28 @@
 import type { Metadata } from "next";
-import { Inter, Outfit } from "next/font/google";
+import { Space_Grotesk, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+const plexSans = IBM_Plex_Sans({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-plex",
   display: "swap",
+  weight: ["400", "500", "600", "700"],
 });
 
-const outfit = Outfit({
+const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
-  variable: "--font-outfit",
+  variable: "--font-space",
   display: "swap",
   weight: ["500", "600", "700"],
 });
 
 export const metadata: Metadata = {
-  title: "Lucide · IA Football",
-  description: "Assistant conversationnel football propulse par API-Football + IA",
+  title: "STATOS",
+  description: "STATOS est la plateforme professionnelle d'analyse et de performance football.",
+  icons: {
+    icon: "/statos-s.svg",
+    apple: "/statos-s.svg",
+  },
 };
 
 export default function RootLayout({
@@ -27,7 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <body className={`${inter.variable} ${outfit.variable} bg-slatebg`}>
+      <body className={`${plexSans.variable} ${spaceGrotesk.variable} bg-slatebg`}>
         {children}
       </body>
     </html>

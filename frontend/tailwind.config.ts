@@ -10,9 +10,9 @@ const config: Config = {
     extend: {
       colors: {
         teal: {
-          600: "#0d9488",
-          700: "#0f766e",
-          800: "#115e59",
+          600: "#0ea5e9",
+          700: "#0284c7",
+          800: "#0369a1",
         },
         amber: {
           400: "#f59e0b",
@@ -23,19 +23,19 @@ const config: Config = {
         dark: "#0f172a",
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
-        display: ["var(--font-outfit)", "var(--font-inter)", "sans-serif"],
-        mono: ["JetBrains Mono", "var(--font-inter)", "monospace"],
+        sans: ["var(--font-plex)", "system-ui", "sans-serif"],
+        display: ["var(--font-space)", "var(--font-plex)", "sans-serif"],
+        mono: ["JetBrains Mono", "var(--font-plex)", "monospace"],
       },
       boxShadow: {
-        glow: "0 0 20px rgba(13,148,136,0.3)",
+        glow: "0 0 20px rgba(14,165,233,0.28)",
       },
       borderRadius: {
         xl: "16px",
       },
       backgroundImage: {
         "lucide-grid":
-          "radial-gradient(circle at 20% 20%, rgba(13,148,136,0.12), transparent 32%), radial-gradient(circle at 70% 0%, rgba(245,158,11,0.08), transparent 32%)",
+          "radial-gradient(circle at 15% 15%, rgba(14,165,233,0.14), transparent 32%), radial-gradient(circle at 80% 10%, rgba(245,158,11,0.10), transparent 30%)",
       },
     },
   },

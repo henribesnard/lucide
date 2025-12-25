@@ -1051,6 +1051,40 @@ TOOL_DEFINITIONS: List[Dict[str, Any]] = [
             "parameters": {"type": "object", "properties": {}, "required": []},
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "league_type",
+            "description": "Determine si une ligue est une Coupe ou un Championnat. Retourne 'Cup', 'League' ou 'Unknown'.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "league_id": {"type": "integer"},
+                    "season": {"type": "integer"},
+                },
+                "required": ["league_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "team_form_stats",
+            "description": "Statistiques de forme d'une equipe basees sur les N derniers matchs (toutes competitions). Retourne forme (W/D/L), buts, clean sheets, moyennes.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "team_id": {"type": "integer"},
+                    "last_n": {
+                        "type": "integer",
+                        "description": "Nombre de derniers matchs a analyser",
+                        "default": 10,
+                    },
+                },
+                "required": ["team_id"],
+            },
+        },
+    },
 ]
 
 async def execute_tool(
@@ -1422,6 +1456,22 @@ async def execute_tool(
         if name == "api_status":
             status = await api_client.get_status()
             return {"status": status}
+
+        if name == "league_type":
+            league_type = await api_client.get_league_type(
+                league_id=args["league_id"], season=args.get("season")
+            )
+            return {"league_id": args["league_id"], "type": league_type}
+
+        if name == "team_form_stats":
+            form_stats = await api_client.get_team_form_stats(
+                team_id=args["team_id"], last_n=args.get("last_n", 10)
+            )
+            return {
+                "team_id": args["team_id"],
+                "last_n_matches": args.get("last_n", 10),
+                **form_stats,
+            }
 
         return {"error": f"Tool {name} is not implemented"}
 

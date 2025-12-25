@@ -46,6 +46,20 @@ export const MatchDropdown: React.FC<MatchDropdownProps> = ({
         return ['FT', 'AET', 'PEN', 'AWD', 'WO'].includes(statusShort);
     };
 
+    const isMatchPast = (match: Match) => {
+        // Un match est considéré passé si son timestamp est > 2h dans le passé
+        // (un match dure ~90-120 min, donc après 2h il est forcément terminé)
+        const now = Date.now();
+        const matchTime = match.timestamp * 1000; // timestamp en millisecondes
+        const twoHoursInMs = 2 * 60 * 60 * 1000;
+        return (now - matchTime) > twoHoursInMs;
+    };
+
+    const hasScore = (match: Match) => {
+        // Un score est valide si les deux valeurs sont des nombres (même 0)
+        return typeof match.goals.home === 'number' && typeof match.goals.away === 'number';
+    };
+
     useEffect(() => {
         loadMatches();
         if (typeof window !== 'undefined') {
@@ -179,7 +193,7 @@ export const MatchDropdown: React.FC<MatchDropdownProps> = ({
                                             {formatElapsedTime(match.status.elapsed, match.status.short)}
                                         </div>
                                     </>
-                                ) : isFinishedMatch(match.status.short) ? (
+                                ) : isFinishedMatch(match.status.short) || (isMatchPast(match) && hasScore(match)) ? (
                                     <>
                                         <div className="text-[8px] font-bold text-slate-500 mb-1 px-1.5 py-0.5 bg-slate-100 rounded">
                                             TERMINÉ
@@ -192,6 +206,20 @@ export const MatchDropdown: React.FC<MatchDropdownProps> = ({
                                             <span className="text-sm font-bold text-slate-800">
                                                 {match.goals.away ?? 0}
                                             </span>
+                                        </div>
+                                    </>
+                                ) : isMatchPast(match) && !hasScore(match) ? (
+                                    <>
+                                        <div className="text-[8px] font-bold text-slate-500 mb-1 px-1.5 py-0.5 bg-slate-100 rounded">
+                                            TERMINÉ
+                                        </div>
+                                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-white border border-slate-200">
+                                            <span className="text-sm font-bold text-slate-400">?</span>
+                                            <span className="text-[10px] text-slate-400">-</span>
+                                            <span className="text-sm font-bold text-slate-400">?</span>
+                                        </div>
+                                        <div className="text-[9px] text-slate-400 mt-1">
+                                            Score indisponible
                                         </div>
                                     </>
                                 ) : (

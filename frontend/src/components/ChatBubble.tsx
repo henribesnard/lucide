@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Image from "next/image";
 import { ChatInputBubble } from "./chat/ChatInputBubble";
 import { useContextSelection } from "@/hooks/useContextSelection";
 import { AuthManager } from "@/utils/auth";
@@ -136,11 +137,11 @@ export default function ChatBubble({
       const contextSelection = contextLocked && activeConversation?.contextSelection
         ? activeConversation.contextSelection
         : {
-            league: selectedLeague,
-            match: selectedMatch,
-            team: selectedTeam,
-            player: selectedPlayer,
-          };
+          league: selectedLeague,
+          match: selectedMatch,
+          team: selectedTeam,
+          player: selectedPlayer,
+        };
       const chatContext =
         contextLocked && activeConversation?.context
           ? activeConversation.context
@@ -310,14 +311,11 @@ export default function ChatBubble({
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
           <div className="mb-12">
             <div className="flex items-center justify-center gap-4 mb-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/20">
-                <span className="text-white font-bold text-3xl">L</span>
+              <div className="w-24 h-24 rounded-3xl bg-white flex items-center justify-center shadow-lg shadow-teal-500/10 ring-1 ring-slate-200/60">
+                <Image src="/statos-s.svg" alt="STATOS" width={64} height={64} priority />
               </div>
-              <h1 className="text-6xl font-bold text-slate-900 tracking-tight">Lucide</h1>
             </div>
-            <p className="text-slate-500 text-xl font-medium">
-              Analyse de matchs et paris sportifs
-            </p>
+
           </div>
 
           <div className="w-full max-w-2xl">
@@ -349,12 +347,11 @@ export default function ChatBubble({
           {/* Header */}
           <div className="px-6 py-4 bg-white/80 backdrop-blur-md sticky top-0 z-10 border-b border-slate-200/50">
             <div className="max-w-4xl mx-auto flex items-center gap-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center shadow-sm">
-                <span className="text-white font-bold text-sm">L</span>
+              <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm ring-1 ring-slate-200/60">
+                <Image src="/statos-s.svg" alt="STATOS" width={24} height={24} />
               </div>
               <div>
-                <h1 className="text-sm font-bold text-slate-900 leading-none">Lucide</h1>
-                <span className="text-[10px] text-slate-500 font-medium">Assistant Foot</span>
+                <span className="text-[10px] text-slate-500 font-medium">Assistant Football</span>
               </div>
             </div>
           </div>

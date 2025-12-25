@@ -1,6 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
+import {
+  BoltIcon,
+  CalendarDaysIcon,
+  TrophyIcon,
+  StarIcon,
+} from "@heroicons/react/24/outline";
 
 type Message = {
   id: string;
@@ -20,7 +27,38 @@ type ChatInterfaceProps = {
 };
 
 const categories = ["Stats", "Pronostic", "Live"] as const;
-const leagues = ["Toutes ligues", "Ligue 1", "Premier League", "La Liga", "Serie A", "Bundesliga", "Champions League"];
+const leagues = [
+  "Toutes ligues",
+  "Ligue 1",
+  "Premier League",
+  "La Liga",
+  "Serie A",
+  "Bundesliga",
+  "Champions League",
+];
+
+const suggestions = [
+  {
+    icon: BoltIcon,
+    title: "Live maintenant",
+    desc: "Matchs en cours et scores temps reel",
+  },
+  {
+    icon: CalendarDaysIcon,
+    title: "Programme du jour",
+    desc: "Tous les matchs d'aujourd'hui",
+  },
+  {
+    icon: TrophyIcon,
+    title: "Champions League",
+    desc: "Resultats et classement",
+  },
+  {
+    icon: StarIcon,
+    title: "Top buteurs",
+    desc: "Meilleurs marqueurs de la saison",
+  },
+];
 
 export function ChatInterface({
   messages,
@@ -38,87 +76,93 @@ export function ChatInterface({
         <div className="flex flex-1 flex-col items-center justify-center px-4 pb-24">
           <div className="mb-12 text-center">
             <div className="mb-4 flex justify-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-600 to-teal-800 text-3xl shadow-lg">
-                ⚽
+              <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-white shadow-lg shadow-teal-500/10 ring-1 ring-slate-200/60">
+                <Image src="/statos-s.svg" alt="STATOS" width={64} height={64} priority />
               </div>
             </div>
-            <h1 className="mb-3 font-display text-5xl font-bold text-slate-900">
-              L&apos;intelligence du football
-            </h1>
+
             <p className="mx-auto max-w-2xl text-lg text-slate-600">
               Posez vos questions, analysez les matchs, comparez les cotes et suivez le live.
             </p>
           </div>
 
           <div className="grid w-full max-w-3xl gap-3 md:grid-cols-2">
-            {[
-              { icon: "🔴", title: "Live maintenant", desc: "Matchs en cours et scores temps réel" },
-              { icon: "📅", title: "Programme du jour", desc: "Tous les matchs d'aujourd'hui" },
-              { icon: "🏆", title: "Champions League", desc: "Résultats et classement" },
-              { icon: "⚽", title: "Top buteurs", desc: "Meilleurs marqueurs de la saison" },
-            ].map((suggestion) => (
-              <button
-                key={suggestion.title}
-                onClick={() => onSendMessage(suggestion.title)}
-                className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:border-teal-400 hover:shadow-md"
-              >
-                <span className="text-2xl">{suggestion.icon}</span>
-                <div>
-                  <p className="font-semibold text-slate-900">{suggestion.title}</p>
-                  <p className="text-sm text-slate-600">{suggestion.desc}</p>
-                </div>
-              </button>
-            ))}
+            {suggestions.map((suggestion) => {
+              const Icon = suggestion.icon;
+              return (
+                <button
+                  key={suggestion.title}
+                  onClick={() => onSendMessage(suggestion.title)}
+                  className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:border-teal-400 hover:shadow-md"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="font-semibold text-slate-900">{suggestion.title}</p>
+                    <p className="text-sm text-slate-600">{suggestion.desc}</p>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto px-4 py-6 scrollbar-hide">
           <div className="mx-auto max-w-3xl space-y-6">
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex gap-4 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
-              >
+            {messages.map((msg) => {
+              const isUser = msg.role === "user";
+              return (
                 <div
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
-                    msg.role === "user"
-                      ? "bg-gradient-to-br from-teal-600 to-teal-700 text-white"
-                      : "bg-slate-200 text-slate-700"
-                  }`}
+                  key={msg.id}
+                  className={`flex gap-4 ${isUser ? "flex-row-reverse" : ""}`}
                 >
-                  {msg.role === "user" ? "U" : "L"}
-                </div>
-                <div className="flex-1">
                   <div
-                    className={`rounded-2xl px-4 py-3 ${
-                      msg.role === "user"
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${isUser
+                      ? "bg-gradient-to-br from-teal-600 to-teal-700 text-white"
+                      : "bg-white text-slate-700 ring-1 ring-slate-200"
+                      }`}
+                  >
+                    {isUser ? (
+                      "U"
+                    ) : (
+                      <Image src="/statos-s.svg" alt="STATOS" width={16} height={16} />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div
+                      className={`rounded-2xl px-4 py-3 ${isUser
                         ? "bg-gradient-to-br from-teal-600 to-teal-700 text-white"
                         : "bg-slate-100 text-slate-900"
-                    }`}
-                  >
-                    <p className="whitespace-pre-line text-sm leading-relaxed">{msg.content}</p>
-                  </div>
-                  {(msg.intent || msg.tools || msg.entities) && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {msg.intent && (
-                        <span className="rounded-md bg-teal-50 px-2 py-1 text-xs font-semibold text-teal-700">
-                          {msg.intent}
-                        </span>
-                      )}
-                      {msg.tools?.map((tool) => (
-                        <span key={tool} className="rounded-md bg-slate-200 px-2 py-1 text-xs font-semibold text-slate-700">
-                          {tool}
-                        </span>
-                      ))}
+                        }`}
+                    >
+                      <p className="whitespace-pre-line text-sm leading-relaxed">{msg.content}</p>
                     </div>
-                  )}
+                    {(msg.intent || msg.tools || msg.entities) && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {msg.intent && (
+                          <span className="rounded-md bg-teal-50 px-2 py-1 text-xs font-semibold text-teal-700">
+                            {msg.intent}
+                          </span>
+                        )}
+                        {msg.tools?.map((tool) => (
+                          <span
+                            key={tool}
+                            className="rounded-md bg-slate-200 px-2 py-1 text-xs font-semibold text-slate-700"
+                          >
+                            {tool}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {loading && (
               <div className="flex gap-4">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-700">
-                  L
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-slate-200">
+                  <Image src="/statos-s.svg" alt="STATOS" width={16} height={16} />
                 </div>
                 <div className="flex-1 rounded-2xl bg-slate-100 px-4 py-3">
                   <div className="space-y-2">
@@ -151,11 +195,10 @@ export function ChatInterface({
                   <button
                     key={cat}
                     onClick={() => setCategory(cat)}
-                    className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
-                      category === cat
-                        ? "bg-teal-100 text-teal-700"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                    }`}
+                    className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${category === cat
+                      ? "bg-teal-100 text-teal-700"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
                   >
                     {cat}
                   </button>
@@ -211,7 +254,7 @@ export function ChatInterface({
           </div>
 
           <p className="mt-3 text-center text-xs text-slate-500">
-            Lucide peut faire des erreurs. Vérifiez les informations importantes.
+            STATOS peut faire des erreurs. Verifiez les informations importantes.
           </p>
         </div>
       </div>

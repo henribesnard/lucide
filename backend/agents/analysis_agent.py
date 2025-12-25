@@ -30,13 +30,34 @@ def _extract_season_hint(tool_results: List[ToolCallResult]) -> Optional[int]:
 
 
 def _compact_output(output: Any) -> Any:
+    """
+    Compacte les outputs pour réduire la taille, mais garde les données critiques intactes.
+    - Lineups: garde tous les joueurs (max 30) pour avoir les compos complètes
+    - Autres listes: limite à 5 éléments
+    """
     if isinstance(output, list):
+        # Pour les lineups et données de joueurs, garder plus d'éléments
+        # Détecter si c'est une liste de joueurs (presence de 'player' ou 'name')
+        if output and isinstance(output[0], dict):
+            first_item_keys = set(output[0].keys())
+            if 'player' in first_item_keys or ('name' in first_item_keys and 'number' in first_item_keys):
+                # C'est probablement des joueurs, garder jusqu'à 30 éléments
+                return output[:30]
+        # Pour les autres listes, limite standard
         return output[:5]
     if isinstance(output, dict):
         compacted: Dict[str, Any] = {}
         for key, value in output.items():
             if isinstance(value, list):
-                compacted[key] = value[:5]
+                # Même logique pour les listes imbriquées
+                if value and isinstance(value[0], dict):
+                    first_item_keys = set(value[0].keys())
+                    if 'player' in first_item_keys or ('name' in first_item_keys and 'number' in first_item_keys):
+                        compacted[key] = value[:30]
+                    else:
+                        compacted[key] = value[:5]
+                else:
+                    compacted[key] = value[:5]
             else:
                 compacted[key] = value
         return compacted

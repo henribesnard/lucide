@@ -118,7 +118,8 @@ async def chat(
         if request.session_id:
              session_id = request.session_id
         else:
-             session_id = f"user_{current_user.user_id}"
+             # Generate a new UUID for the conversation
+             session_id = str(uuid.uuid4())
 
         # Track session in Redis for TTL management
         session_data = await session_manager.get_session(session_id)
@@ -211,7 +212,8 @@ async def chat_stream(
             if request.session_id:
                 session_id = request.session_id
             else:
-                session_id = f"user_{current_user.user_id}"
+                # Generate a new UUID for the conversation
+                session_id = str(uuid.uuid4())
 
             # Track session in Redis for TTL management
             session_data = await session_manager.get_session(session_id)

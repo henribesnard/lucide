@@ -1,126 +1,130 @@
-
 "use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { AuthManager } from '@/utils/auth';
-import Link from 'next/link';
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState, type FormEvent } from "react";
+import { AuthManager } from "@/utils/auth";
 
 export default function RegisterPage() {
-    const router = useRouter();
-    const [formData, setFormData] = useState({
-        email: '',
-        password: '',
-        fullName: '',
-    });
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
-    const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
 
-    async function handleSubmit(e: React.FormEvent) {
-        e.preventDefault();
-        setError('');
-        setSuccess('');
-        setLoading(true);
-
-        try {
-            await AuthManager.register(formData.email, formData.password, formData.fullName);
-            setSuccess('Compte créé avec succès ! Redirection vers la connexion...');
-            setTimeout(() => {
-                router.push('/login');
-            }, 2000);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Erreur lors de l'inscription");
-        } finally {
-            setLoading(false);
-        }
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+    setSuccess("");
+    setLoading(true);
+    try {
+      await AuthManager.register(email, password, fullName);
+      setSuccess("Compte cree. Verifiez votre email.");
+      router.push("/login");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Registration failed");
+    } finally {
+      setLoading(false);
     }
+  };
 
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-            <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-100">
-                <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/20 mx-auto mb-4">
-                        <span className="text-white font-bold text-3xl">L</span>
-                    </div>
-                    <h1 className="text-2xl font-bold text-slate-800">Créer un compte</h1>
-                    <p className="text-slate-500 mt-2 text-sm">Rejoignez la communauté Lucide</p>
-                </div>
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4 py-10">
+      <div className="relative w-full max-w-md">
+        <div className="absolute -top-24 -right-16 h-40 w-40 rounded-full bg-teal-200/40 blur-3xl" />
+        <div className="absolute -bottom-24 -left-16 h-40 w-40 rounded-full bg-amber-200/40 blur-3xl" />
 
-                <form onSubmit={handleSubmit} className="space-y-5">
-                    {error && (
-                        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
-                            {error}
-                        </div>
-                    )}
-                    {success && (
-                        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm">
-                            {success}
-                        </div>
-                    )}
-
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                            Nom complet
-                        </label>
-                        <input
-                            type="text"
-                            value={formData.fullName}
-                            onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                            required
-                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all text-slate-800"
-                            placeholder="Jean Dupont"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                            Email
-                        </label>
-                        <input
-                            type="email"
-                            value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            required
-                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all text-slate-800"
-                            placeholder="votre@email.com"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                            Mot de passe
-                        </label>
-                        <input
-                            type="password"
-                            value={formData.password}
-                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                            required
-                            minLength={8}
-                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all text-slate-800"
-                            placeholder="••••••••"
-                        />
-                        <p className="text-xs text-slate-400 mt-1">Minimum 8 caractères</p>
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full px-4 py-3 bg-teal-600 text-white font-medium rounded-xl hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-teal-600/20 flex items-center justify-center"
-                    >
-                        {loading ? (
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : "S'inscrire"}
-                    </button>
-                </form>
-
-                <div className="mt-8 text-center pt-6 border-t border-slate-100">
-                    <p className="text-sm text-slate-500 mb-2">Déjà un compte ?</p>
-                    <Link href="/login" className="text-sm font-semibold text-teal-600 hover:text-teal-700 hover:underline">
-                        Se connecter
-                    </Link>
-                </div>
+        <div className="relative rounded-2xl border border-white/70 bg-white/90 p-8 shadow-2xl backdrop-blur">
+          <div className="text-center mb-8">
+            <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-3xl bg-white shadow-md ring-1 ring-slate-200/60">
+              <Image src="/statos-s.svg" alt="STATOS" width={64} height={64} priority />
             </div>
+            <h1 className="mt-3 text-2xl font-semibold text-slate-900">Creer un compte</h1>
+            <p className="mt-2 text-sm text-slate-500">
+              Demarrez avec STATOS pour vos analyses.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                {success}
+              </div>
+            )}
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                Nom complet
+              </label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required
+                autoComplete="name"
+                className="input-field"
+                placeholder="Prenom Nom"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                className="input-field"
+                placeholder="vous@email.com"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                Mot de passe
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="new-password"
+                className="input-field"
+                placeholder="********"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary w-full flex items-center justify-center"
+            >
+              {loading ? "Creation..." : "Creer mon compte"}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center text-sm text-slate-500">
+            Deja un compte ?{" "}
+            <Link
+              href="/login"
+              className="font-semibold text-teal-700 hover:text-teal-800"
+            >
+              Se connecter
+            </Link>
+          </div>
         </div>
-    );
+      </div>
+    </div>
+  );
 }

@@ -3,14 +3,25 @@
 @tailwind utilities;
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --statos-bg: #f4f7fb;
+  --statos-surface: #ffffff;
+  --statos-ink: #0b1220;
+  --statos-ink-soft: #1f2a44;
+  --statos-accent: #0ea5e9;
+  --statos-accent-strong: #0284c7;
+  --statos-highlight: #f59e0b;
+  --statos-line: #e2e8f0;
+  --background: var(--statos-bg);
+  --foreground: var(--statos-ink);
 }
 
 body {
   color: var(--foreground);
-  background: var(--background);
-  font-family: var(--font-inter), system-ui, sans-serif;
+  background:
+    radial-gradient(1100px 700px at 15% -10%, rgba(14, 165, 233, 0.18), transparent 55%),
+    radial-gradient(900px 600px at 90% 10%, rgba(245, 158, 11, 0.12), transparent 50%),
+    var(--background);
+  font-family: var(--font-plex), system-ui, sans-serif;
   min-height: 100vh;
   overflow-x: hidden;
 }
@@ -34,7 +45,7 @@ body {
   }
 
   .shadow-glow {
-    box-shadow: 0 0 15px rgba(13, 148, 136, 0.3);
+    box-shadow: 0 0 18px rgba(14, 165, 233, 0.28);
   }
 
   .scrollbar-hide {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import {
   HomeIcon,
   ClockIcon,
@@ -113,7 +114,7 @@ export default function MainSidebar({
     {
       id: "settings",
       icon: Cog6ToothIcon,
-      label: "Paramètres",
+      label: "Parametres",
       hasSubmenu: false,
     },
   ];
@@ -131,17 +132,15 @@ export default function MainSidebar({
 
       {/* Mobile Drawer */}
       <div
-        className={`lg:hidden fixed inset-y-0 left-0 w-64 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${
-          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`lg:hidden fixed inset-y-0 left-0 w-64 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         {/* Mobile Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl">L</span>
+            <div className="w-10 h-10 rounded-lg bg-white ring-1 ring-slate-200/60 flex items-center justify-center">
+              <Image src="/statos-s.svg" alt="STATOS" width={24} height={24} />
             </div>
-            <span className="font-semibold text-lg text-gray-900">Lucide</span>
           </div>
           <button
             onClick={() => setIsMobileMenuOpen(false)}
@@ -156,7 +155,7 @@ export default function MainSidebar({
         <div className="p-4 space-y-2">
           {/* New Chat Button */}
           <button
-            className="w-full p-3 bg-teal-500 hover:bg-teal-600 text-white rounded-lg flex items-center justify-center gap-2 transition-colors font-medium"
+            className="w-full p-3 bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white rounded-lg flex items-center justify-center gap-2 transition-colors font-medium"
             onClick={() => {
               onNewConversation();
               setActiveSection(null);
@@ -177,11 +176,10 @@ export default function MainSidebar({
                 <button
                   key={item.id}
                   onClick={() => setActiveSection(isActive ? null : item.id)}
-                  className={`w-full p-3 rounded-lg flex items-center gap-3 transition-all ${
-                    isActive
-                      ? "bg-teal-50 text-teal-600"
-                      : "text-gray-700 hover:bg-gray-100"
-                  }`}
+                  className={`w-full p-3 rounded-lg flex items-center gap-3 transition-all ${isActive
+                    ? "bg-teal-50 text-teal-600"
+                    : "text-gray-700 hover:bg-gray-100"
+                    }`}
                 >
                   <Icon className="w-5 h-5 flex-shrink-0" />
                   <span className="font-medium">{item.label}</span>
@@ -206,39 +204,38 @@ export default function MainSidebar({
                 .map((conv) => {
                   const isActive = conv.id === activeConversationId;
                   return (
-                  <div
-                    key={conv.id}
-                    className={`flex items-start gap-2 p-3 rounded-lg transition-colors ${
-                      isActive ? "bg-teal-50" : "hover:bg-gray-50"
-                    }`}
-                  >
-                    <button
-                      className="flex-1 text-left"
-                      onClick={() => handleSelectConversation(conv.id)}
+                    <div
+                      key={conv.id}
+                      className={`flex items-start gap-2 p-3 rounded-lg transition-colors ${isActive ? "bg-teal-50" : "hover:bg-gray-50"
+                        }`}
                     >
-                      <div className="font-medium text-sm text-gray-900">
-                        {conv.title}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1 line-clamp-1">
-                        {conv.preview}
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => toggleArchive(conv.id, true)}
-                      className="p-1 rounded-md hover:bg-gray-100"
-                      aria-label="Archiver la conversation"
-                    >
-                      <ArchiveBoxIcon className="w-4 h-4 text-gray-400" />
-                    </button>
-                  </div>
-                );
+                      <button
+                        className="flex-1 text-left"
+                        onClick={() => handleSelectConversation(conv.id)}
+                      >
+                        <div className="font-medium text-sm text-gray-900">
+                          {conv.title}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1 line-clamp-1">
+                          {conv.preview}
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => toggleArchive(conv.id, true)}
+                        className="p-1 rounded-md hover:bg-gray-100"
+                        aria-label="Archiver la conversation"
+                      >
+                        <ArchiveBoxIcon className="w-4 h-4 text-gray-400" />
+                      </button>
+                    </div>
+                  );
                 })}
               {historyConversations.filter((c) => c.dateLabel === "Aujourd'hui")
                 .length === 0 && (
-                <div className="p-3 text-xs text-gray-500">
-                  Aucune conversation aujourd'hui.
-                </div>
-              )}
+                  <div className="p-3 text-xs text-gray-500">
+                    Aucune conversation aujourd'hui.
+                  </div>
+                )}
             </div>
           )}
 
@@ -255,35 +252,34 @@ export default function MainSidebar({
               {archivedConversations.map((conv) => {
                 const isActive = conv.id === activeConversationId;
                 return (
-                <div
-                  key={conv.id}
-                  className={`flex items-start gap-2 p-3 rounded-lg transition-colors ${
-                    isActive ? "bg-teal-50" : "hover:bg-gray-50"
-                  }`}
-                >
-                  <button
-                    className="flex-1 text-left"
-                    onClick={() => handleSelectConversation(conv.id)}
+                  <div
+                    key={conv.id}
+                    className={`flex items-start gap-2 p-3 rounded-lg transition-colors ${isActive ? "bg-teal-50" : "hover:bg-gray-50"
+                      }`}
                   >
-                    <div className="font-medium text-sm text-gray-900">
-                      {conv.title}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1 line-clamp-1">
-                      {conv.preview}
-                    </div>
-                    <div className="text-xs text-gray-400 mt-1">
-                      {conv.dateLabel}
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => toggleArchive(conv.id, false)}
-                    className="p-1 rounded-md hover:bg-gray-100"
-                    aria-label="Restaurer la conversation"
-                  >
-                    <ArrowUturnLeftIcon className="w-4 h-4 text-gray-400" />
-                  </button>
-                </div>
-              );
+                    <button
+                      className="flex-1 text-left"
+                      onClick={() => handleSelectConversation(conv.id)}
+                    >
+                      <div className="font-medium text-sm text-gray-900">
+                        {conv.title}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1 line-clamp-1">
+                        {conv.preview}
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        {conv.dateLabel}
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => toggleArchive(conv.id, false)}
+                      className="p-1 rounded-md hover:bg-gray-100"
+                      aria-label="Restaurer la conversation"
+                    >
+                      <ArrowUturnLeftIcon className="w-4 h-4 text-gray-400" />
+                    </button>
+                  </div>
+                );
               })}
             </div>
           )}
@@ -296,7 +292,7 @@ export default function MainSidebar({
             className="w-full flex items-center gap-3"
             onClick={() => setIsUserMenuOpen((prev) => !prev)}
           >
-            <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-teal-600 to-teal-700 rounded-full flex items-center justify-center">
               <span className="text-white font-semibold text-sm">{initials}</span>
             </div>
             <div className="text-left">
@@ -331,8 +327,8 @@ export default function MainSidebar({
       <div className="hidden lg:flex fixed left-0 top-0 h-screen w-16 bg-white border-r border-gray-200 flex-col items-center py-4 z-50">
         {/* Logo */}
         <div className="mb-8">
-          <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-xl">L</span>
+          <div className="w-12 h-12 rounded-lg bg-white ring-1 ring-slate-200/60 flex items-center justify-center">
+            <Image src="/statos-s.svg" alt="STATOS" width={28} height={28} />
           </div>
         </div>
 
@@ -356,14 +352,11 @@ export default function MainSidebar({
             return (
               <button
                 key={item.id}
-                onClick={() =>
-                  setActiveSection(isActive ? null : item.id)
-                }
-                className={`relative w-12 h-12 rounded-lg flex items-center justify-center transition-all ${
-                  isActive
-                    ? "bg-teal-50 text-teal-600"
-                    : "text-gray-600 hover:bg-gray-100"
-                }`}
+                onClick={() => setActiveSection(isActive ? null : item.id)}
+                className={`relative w-12 h-12 rounded-lg flex items-center justify-center transition-all ${isActive
+                  ? "bg-teal-50 text-teal-600"
+                  : "text-gray-600 hover:bg-gray-100"
+                  }`}
                 title={item.label}
               >
                 <Icon className="w-6 h-6" />
@@ -382,7 +375,7 @@ export default function MainSidebar({
           <button
             type="button"
             onClick={() => setIsUserMenuOpen((prev) => !prev)}
-            className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center"
+            className="w-10 h-10 bg-gradient-to-br from-teal-600 to-teal-700 rounded-full flex items-center justify-center"
             title={displayName}
           >
             <span className="text-white font-semibold text-sm">{initials}</span>
@@ -436,39 +429,38 @@ export default function MainSidebar({
                     .map((conv) => {
                       const isActive = conv.id === activeConversationId;
                       return (
-                      <div
-                        key={conv.id}
-                        className={`flex items-start gap-2 p-3 rounded-lg transition-colors group ${
-                          isActive ? "bg-teal-50" : "hover:bg-gray-50"
-                        }`}
-                      >
-                        <button
-                          className="flex-1 text-left"
-                          onClick={() => handleSelectConversation(conv.id)}
+                        <div
+                          key={conv.id}
+                          className={`flex items-start gap-2 p-3 rounded-lg transition-colors group ${isActive ? "bg-teal-50" : "hover:bg-gray-50"
+                            }`}
                         >
-                          <div className="font-medium text-sm text-gray-900 group-hover:text-teal-600">
-                            {conv.title}
-                          </div>
-                          <div className="text-xs text-gray-500 mt-1 line-clamp-1">
-                            {conv.preview}
-                          </div>
-                        </button>
-                        <button
-                          onClick={() => toggleArchive(conv.id, true)}
-                          className="p-1 rounded-md hover:bg-gray-100"
-                          aria-label="Archiver la conversation"
-                        >
-                          <ArchiveBoxIcon className="w-4 h-4 text-gray-400" />
-                        </button>
-                      </div>
-                    );
+                          <button
+                            className="flex-1 text-left"
+                            onClick={() => handleSelectConversation(conv.id)}
+                          >
+                            <div className="font-medium text-sm text-gray-900 group-hover:text-teal-600">
+                              {conv.title}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1 line-clamp-1">
+                              {conv.preview}
+                            </div>
+                          </button>
+                          <button
+                            onClick={() => toggleArchive(conv.id, true)}
+                            className="p-1 rounded-md hover:bg-gray-100"
+                            aria-label="Archiver la conversation"
+                          >
+                            <ArchiveBoxIcon className="w-4 h-4 text-gray-400" />
+                          </button>
+                        </div>
+                      );
                     })}
                   {historyConversations.filter((c) => c.dateLabel === "Aujourd'hui")
                     .length === 0 && (
-                    <div className="px-3 py-2 text-xs text-gray-500">
-                      Aucune conversation aujourd'hui.
-                    </div>
-                  )}
+                      <div className="px-3 py-2 text-xs text-gray-500">
+                        Aucune conversation aujourd'hui.
+                      </div>
+                    )}
                 </div>
 
                 <div className="mb-4">
@@ -480,42 +472,41 @@ export default function MainSidebar({
                     .map((conv) => {
                       const isActive = conv.id === activeConversationId;
                       return (
-                      <div
-                        key={conv.id}
-                        className={`flex items-start gap-2 p-3 rounded-lg transition-colors group ${
-                          isActive ? "bg-teal-50" : "hover:bg-gray-50"
-                        }`}
-                      >
-                        <button
-                          className="flex-1 text-left"
-                          onClick={() => handleSelectConversation(conv.id)}
+                        <div
+                          key={conv.id}
+                          className={`flex items-start gap-2 p-3 rounded-lg transition-colors group ${isActive ? "bg-teal-50" : "hover:bg-gray-50"
+                            }`}
                         >
-                          <div className="font-medium text-sm text-gray-900 group-hover:text-teal-600">
-                            {conv.title}
-                          </div>
-                          <div className="text-xs text-gray-500 mt-1 line-clamp-1">
-                            {conv.preview}
-                          </div>
-                          <div className="text-xs text-gray-400 mt-1">
-                            {conv.dateLabel}
-                          </div>
-                        </button>
-                        <button
-                          onClick={() => toggleArchive(conv.id, true)}
-                          className="p-1 rounded-md hover:bg-gray-100"
-                          aria-label="Archiver la conversation"
-                        >
-                          <ArchiveBoxIcon className="w-4 h-4 text-gray-400" />
-                        </button>
-                      </div>
-                    );
+                          <button
+                            className="flex-1 text-left"
+                            onClick={() => handleSelectConversation(conv.id)}
+                          >
+                            <div className="font-medium text-sm text-gray-900 group-hover:text-teal-600">
+                              {conv.title}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1 line-clamp-1">
+                              {conv.preview}
+                            </div>
+                            <div className="text-xs text-gray-400 mt-1">
+                              {conv.dateLabel}
+                            </div>
+                          </button>
+                          <button
+                            onClick={() => toggleArchive(conv.id, true)}
+                            className="p-1 rounded-md hover:bg-gray-100"
+                            aria-label="Archiver la conversation"
+                          >
+                            <ArchiveBoxIcon className="w-4 h-4 text-gray-400" />
+                          </button>
+                        </div>
+                      );
                     })}
                   {historyConversations.filter((c) => c.dateLabel !== "Aujourd'hui")
                     .length === 0 && (
-                    <div className="px-3 py-2 text-xs text-gray-500">
-                      Aucune conversation cette semaine.
-                    </div>
-                  )}
+                      <div className="px-3 py-2 text-xs text-gray-500">
+                        Aucune conversation cette semaine.
+                      </div>
+                    )}
                 </div>
               </div>
             )}
@@ -531,35 +522,34 @@ export default function MainSidebar({
                 {archivedConversations.map((conv) => {
                   const isActive = conv.id === activeConversationId;
                   return (
-                  <div
-                    key={conv.id}
-                    className={`flex items-start gap-2 p-3 rounded-lg transition-colors group ${
-                      isActive ? "bg-teal-50" : "hover:bg-gray-50"
-                    }`}
-                  >
-                    <button
-                      className="flex-1 text-left"
-                      onClick={() => handleSelectConversation(conv.id)}
+                    <div
+                      key={conv.id}
+                      className={`flex items-start gap-2 p-3 rounded-lg transition-colors group ${isActive ? "bg-teal-50" : "hover:bg-gray-50"
+                        }`}
                     >
-                      <div className="font-medium text-sm text-gray-900 group-hover:text-teal-600">
-                        {conv.title}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1 line-clamp-1">
-                        {conv.preview}
-                      </div>
-                      <div className="text-xs text-gray-400 mt-1">
-                        {conv.dateLabel}
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => toggleArchive(conv.id, false)}
-                      className="p-1 rounded-md hover:bg-gray-100"
-                      aria-label="Restaurer la conversation"
-                    >
-                      <ArrowUturnLeftIcon className="w-4 h-4 text-gray-400" />
-                    </button>
-                  </div>
-                );
+                      <button
+                        className="flex-1 text-left"
+                        onClick={() => handleSelectConversation(conv.id)}
+                      >
+                        <div className="font-medium text-sm text-gray-900 group-hover:text-teal-600">
+                          {conv.title}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1 line-clamp-1">
+                          {conv.preview}
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          {conv.dateLabel}
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => toggleArchive(conv.id, false)}
+                        className="p-1 rounded-md hover:bg-gray-100"
+                        aria-label="Restaurer la conversation"
+                      >
+                        <ArrowUturnLeftIcon className="w-4 h-4 text-gray-400" />
+                      </button>
+                    </div>
+                  );
                 })}
               </div>
             )}
@@ -568,7 +558,7 @@ export default function MainSidebar({
               <div className="p-4 space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
-                    Thème
+                    Theme
                   </label>
                   <select className="w-full p-2 border border-gray-200 rounded-lg text-sm">
                     <option>Clair</option>
@@ -582,9 +572,9 @@ export default function MainSidebar({
                     Langue
                   </label>
                   <select className="w-full p-2 border border-gray-200 rounded-lg text-sm">
-                    <option>Français</option>
+                    <option>Francais</option>
                     <option>English</option>
-                    <option>Español</option>
+                    <option>Espanol</option>
                   </select>
                 </div>
               </div>
