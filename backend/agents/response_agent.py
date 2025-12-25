@@ -55,6 +55,16 @@ class ResponseAgent:
             {"role": "system", "content": f"Gaps: {json.dumps(analysis.gaps, ensure_ascii=False)}"},
             {"role": "system", "content": f"Safety: {json.dumps(analysis.safety_notes, ensure_ascii=False)}"},
         ]
+        if analysis.causal_summary:
+            messages.append(
+                {
+                    "role": "system",
+                    "content": (
+                        "Causal summary (integrate into the final answer, avoid IDs): "
+                        f"{analysis.causal_summary}"
+                    ),
+                }
+            )
         if season_hint:
             messages.append(
                 {

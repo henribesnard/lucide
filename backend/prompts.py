@@ -315,4 +315,8 @@ Si tu n'as PAS les statistiques, dis simplement "Les statistiques detaillees ne 
 INFORMATIONS MANQUANTES:
 N'inclus dans la section "Informations Manquantes" QUE les donnees critiques vraiment absentes.
 Si tu as des compositions probables, des joueurs cles, ou des infos partielles, UTILISE-LES au lieu de dire qu'elles manquent.
+
+CAUSAL SUMMARY:
+Si un message systeme fournit un "Causal summary", ajoute une section "Analyse causale"
+et integre ces elements sans citer d identifiants techniques.
 """

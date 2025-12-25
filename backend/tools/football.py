@@ -78,6 +78,7 @@ def _summarize_fixture(item: Dict[str, Any]) -> Dict[str, Any]:
     league = item.get("league", {})
     teams = item.get("teams", {})
     goals = item.get("goals", {})
+    venue_data = fixture.get("venue") or {}
     status_info = get_status_info((fixture.get("status") or {}).get("short"))
     return {
         "fixture_id": fixture.get("id"),
@@ -85,11 +86,16 @@ def _summarize_fixture(item: Dict[str, Any]) -> Dict[str, Any]:
         "status_code": status_info["code"],
         "status_label": status_info["label"],
         "status_type": status_info["type"],
-        "venue": (fixture.get("venue") or {}).get("name"),
+        "venue": {
+            "name": venue_data.get("name"),
+            "city": venue_data.get("city"),
+            "country": venue_data.get("country"),
+        },
         "league": {
             "id": league.get("id"),
             "name": league.get("name"),
             "season": league.get("season"),
+            "country": league.get("country"),
         },
         "home": {
             "id": (teams.get("home") or {}).get("id"),

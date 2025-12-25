@@ -25,3 +25,5 @@ class AnalysisResult:
     data_points: List[str] = field(default_factory=list)
     gaps: List[str] = field(default_factory=list)
     safety_notes: List[str] = field(default_factory=list)
+    causal_summary: str = ""
+    causal_payload: Dict[str, Any] = field(default_factory=dict)

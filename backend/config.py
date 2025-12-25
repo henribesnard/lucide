@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     MAX_PARALLEL_TOOL_CALLS: int = 5
     ENABLE_MULTI_LLM: bool = False
     ENABLE_SMART_SKIP_ANALYSIS: bool = False
+    ENABLE_CAUSAL_AI: bool = True
 
     # CORS - comma-separated list of allowed origins
     CORS_ORIGINS: str = "http://localhost,http://localhost:3000,http://localhost:3001,http://localhost:3010,http://localhost:8000,http://localhost:8001"

@@ -7,6 +7,7 @@ from backend.agents.intent_agent import IntentAgent
 from backend.agents.response_agent import ResponseAgent
 from backend.agents.tool_agent import ToolAgent
 from backend.agents.context_agent import ContextAgent
+from backend.agents.causal_agent import CausalAgent
 from backend.agents.types import AnalysisResult, IntentResult, ToolCallResult
 from backend.api.football_api import FootballAPIClient
 from backend.config import settings
@@ -104,6 +105,7 @@ class LucidePipeline:
         self.tool_agent = ToolAgent(llm_for_tools, self.api_client, context_agent=self.context_agent)
         self.analysis_agent = AnalysisAgent(llm_for_analysis)
         self.response_agent = ResponseAgent(llm_for_response)
+        self.causal_agent = CausalAgent(context_agent=self.context_agent)
 
     def _get_llm_for_model_type(self, model_type: str = "slow"):
         """
@@ -282,6 +284,23 @@ class LucidePipeline:
         selected_llm = self._get_llm_for_model_type(model_type)
         analysis_agent = AnalysisAgent(selected_llm)
         response_agent = ResponseAgent(selected_llm)
+        causal_summary = ""
+        causal_payload: Dict[str, Any] = {}
+
+        if settings.ENABLE_CAUSAL_AI and self.causal_agent.should_run(user_message, intent, tool_results):
+            try:
+                causal_result = await self.causal_agent.run(
+                    question=user_message,
+                    intent=intent,
+                    tool_results=tool_results,
+                    llm_client=selected_llm,
+                    context=context,
+                )
+                if causal_result:
+                    causal_summary = causal_result.llm_analysis
+                    causal_payload = causal_result.to_payload()
+            except Exception as exc:
+                logger.warning("Causal analysis failed: %s", exc)
 
         logger.info(f"Using model_type='{model_type}' for analysis and response")
 
@@ -304,6 +323,8 @@ class LucidePipeline:
                 safety_notes=[],
             )
             logger.info("Skipped analysis for intent %s (context=%s)", intent.intent, context.get("context_type") if context else "none")
+        analysis.causal_summary = causal_summary
+        analysis.causal_payload = causal_payload
         response_start = time.perf_counter()
         final_answer = await response_agent.run(
             user_message=user_message,

@@ -62,6 +62,12 @@ class MatchContext(BaseModel):
     # Metadata
     metadata: MatchMetadata
 
+    # Causal cache (lightweight metrics/findings)
+    causal_metrics: Dict[str, Any] = Field(default_factory=dict)
+    causal_findings: List[Dict[str, Any]] = Field(default_factory=list)
+    causal_confidence: Optional[str] = None
+    causal_version: Optional[str] = None
+
     class Config:
         json_encoders = {
             datetime: lambda v: v.isoformat()

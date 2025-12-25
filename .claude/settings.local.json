@@ -65,7 +65,9 @@
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ZGIzNDYwYS1hNmI1LTRkY2UtYTJmNC1hMTIwNThhZmUwYjMiLCJleHAiOjE3NjY1NzUzMTJ9.32ar0ad_m1GTkY2f_n_DkJW7DWh7LIi24Stbsflokxg\" curl -s -X POST http://localhost:8001/chat  -H \"Authorization: Bearer $TOKEN\"  -H \"Content-Type: application/json\"  -d @/tmp/chat_request.json echo \"=== RESPONSE PREVIEW ===\" cat /tmp/chat_response.json)",
       "Bash(__NEW_LINE__ echo \"\")",
       "Bash(export:*)",
-      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ZGIzNDYwYS1hNmI1LTRkY2UtYTJmNC1hMTIwNThhZmUwYjMiLCJleHAiOjE3NjY2MTQ2MTd9.SKZWE_0PTA5T9Kyo_oYefXR52xZG-6htbucvS9t5LAk\")"
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ZGIzNDYwYS1hNmI1LTRkY2UtYTJmNC1hMTIwNThhZmUwYjMiLCJleHAiOjE3NjY2MTQ2MTd9.SKZWE_0PTA5T9Kyo_oYefXR52xZG-6htbucvS9t5LAk\")",
+      "Bash(Select-Object -Last 30)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ZGIzNDYwYS1hNmI1LTRkY2UtYTJmNC1hMTIwNThhZmUwYjMiLCJleHAiOjE3NjY2NjI3OTZ9.ww95tiQFw-jYdWpMLL25mc9L1rd-ubwI3zEM4YXC2eo\")"
     ],
     "deny": [],
     "ask": []

@@ -135,3 +135,19 @@ class ContextAgent:
             "coverage_complete": analysis.coverage_complete,
             "missing_sources": analysis.missing_sources
         }
+
+    def update_causal_cache(self, fixture_id: int, payload: Dict[str, Any]) -> bool:
+        """
+        Update cached causal metrics/findings for a fixture if context exists.
+        """
+        context = self.store.get_context(fixture_id)
+        if not context:
+            return False
+
+        context.causal_metrics = payload.get("calculated_metrics") or payload.get("metrics") or {}
+        context.causal_findings = payload.get("rule_findings") or payload.get("findings") or []
+        context.causal_confidence = payload.get("confidence_overall") or payload.get("confidence")
+        context.causal_version = payload.get("version")
+
+        self.store.save_context(context)
+        return True

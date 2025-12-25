@@ -908,6 +908,43 @@ class ToolAgent:
 
         return tool_results
 
+    async def _force_fixture_summary_for_result_intents(
+        self,
+        intent: IntentResult,
+        context: Optional[Dict[str, Any]],
+        tool_results: List[ToolCallResult],
+    ) -> List[ToolCallResult]:
+        """
+        Ensure fixture summary (score/status) is available for result-oriented intents.
+        """
+        if intent.intent not in {"result_final", "stats_final", "stats_live", "events_summary", "players_performance"}:
+            return tool_results
+
+        if any(tr.name == "fixtures_search" for tr in tool_results):
+            return tool_results
+
+        fixture_id = intent.entities.get("fixture_id") or intent.entities.get("match_id")
+        if not fixture_id and context:
+            fixture_id = context.get("fixture_id") or context.get("match_id")
+
+        if not fixture_id:
+            return tool_results
+
+        result = await execute_tool(
+            self.api_client,
+            "fixtures_search",
+            {"fixture_id": fixture_id},
+        )
+        tool_results.append(
+            ToolCallResult(
+                name="fixtures_search",
+                arguments={"fixture_id": fixture_id},
+                output=result,
+                error=result.get("error") if isinstance(result, dict) else None,
+            )
+        )
+        return tool_results
+
     async def run(
         self,
         user_message: str,
@@ -1106,6 +1143,7 @@ class ToolAgent:
             break
 
         # After LLM loop, force missing critical tools for match analysis if needed
+        tool_results = await self._force_fixture_summary_for_result_intents(intent, context, tool_results)
         tool_results = await self._force_critical_tools_for_match_analysis(intent, tool_results)
 
         # Force player stats tools if player context is provided

@@ -29,6 +29,35 @@ def _extract_season_hint(tool_results: List[ToolCallResult]) -> Optional[int]:
     return None
 
 
+def _extract_score_hint(tool_results: List[ToolCallResult]) -> Optional[Dict[str, str]]:
+    for tr in tool_results:
+        if tr.name != "fixtures_search":
+            continue
+        output = tr.output
+        if not isinstance(output, dict):
+            continue
+        fixtures = output.get("fixtures") or []
+        if not fixtures:
+            continue
+        fx = fixtures[0]
+        home = fx.get("home") or {}
+        away = fx.get("away") or {}
+        home_name = home.get("name")
+        away_name = away.get("name")
+        home_goals = home.get("goals")
+        away_goals = away.get("goals")
+        status = fx.get("status_code") or fx.get("status")
+        if home_name and away_name and home_goals is not None and away_goals is not None:
+            label = "Score actuel"
+            if status in {"FT", "AET", "PEN"}:
+                label = "Score final"
+            return {
+                "score": f"{label}: {home_name} {home_goals} - {away_goals} {away_name}",
+                "status": f"Statut: {status}" if status else "",
+            }
+    return None
+
+
 def _compact_output(output: Any) -> Any:
     """
     Compacte les outputs pour réduire la taille, mais garde les données critiques intactes.
@@ -179,13 +208,22 @@ class AnalysisAgent:
             data_points = payload.get("data_points", [])
             if not isinstance(data_points, list):
                 data_points = [str(data_points)]
+            score_hint = _extract_score_hint(tool_results)
+            if score_hint and not any("score" in str(item).lower() for item in data_points):
+                data_points.insert(0, score_hint["score"])
+                if score_hint.get("status") and not any(str(item).lower().startswith("statut") for item in data_points):
+                    data_points.insert(1, score_hint["status"])
             season_hint = _extract_season_hint(tool_results)
             if season_hint is not None:
                 season_tag = f"Season: {season_hint}"
                 if not any(str(item).startswith("Season:") for item in data_points):
                     data_points.insert(0, season_tag)
             return AnalysisResult(
-                brief=payload.get("brief", ""),
+                brief=(
+                    score_hint["score"]
+                    if score_hint and intent.intent in {"result_final", "stats_final", "events_summary"}
+                    else payload.get("brief", "")
+                ),
                 data_points=data_points,
                 gaps=payload.get("gaps", []) if isinstance(payload.get("gaps", []), list) else [str(payload.get("gaps"))],
                 safety_notes=payload.get("safety_notes", []) if isinstance(payload.get("safety_notes", []), list) else [str(payload.get("safety_notes"))],
