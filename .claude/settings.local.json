@@ -67,7 +67,11 @@
       "Bash(export:*)",
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ZGIzNDYwYS1hNmI1LTRkY2UtYTJmNC1hMTIwNThhZmUwYjMiLCJleHAiOjE3NjY2MTQ2MTd9.SKZWE_0PTA5T9Kyo_oYefXR52xZG-6htbucvS9t5LAk\")",
       "Bash(Select-Object -Last 30)",
-      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ZGIzNDYwYS1hNmI1LTRkY2UtYTJmNC1hMTIwNThhZmUwYjMiLCJleHAiOjE3NjY2NjI3OTZ9.ww95tiQFw-jYdWpMLL25mc9L1rd-ubwI3zEM4YXC2eo\")"
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ZGIzNDYwYS1hNmI1LTRkY2UtYTJmNC1hMTIwNThhZmUwYjMiLCJleHAiOjE3NjY2NjI3OTZ9.ww95tiQFw-jYdWpMLL25mc9L1rd-ubwI3zEM4YXC2eo\")",
+      "Bash(ls:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ZGIzNDYwYS1hNmI1LTRkY2UtYTJmNC1hMTIwNThhZmUwYjMiLCJleHAiOjE3NjY2ODY0ODF9.xsJaTcjd96KCsa_B_4TGB_rjOAOWwwcJgCasm-BTMfw\")",
+      "Bash(docker logs:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ZGIzNDYwYS1hNmI1LTRkY2UtYTJmNC1hMTIwNThhZmUwYjMiLCJleHAiOjE3NjY2ODY3ODd9.6S7-LDddM44uIHf3_MnxboFKiO1mOcvTqIC-ANH3VJk\")"
     ],
     "deny": [],
     "ask": []

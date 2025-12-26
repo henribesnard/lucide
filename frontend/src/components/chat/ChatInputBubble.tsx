@@ -2,6 +2,8 @@
 import React, { useRef, useEffect } from 'react';
 import { SendIcon } from './icons/ContextIcons';
 import { ContextBar } from './ContextBar';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useTranslation } from '@/i18n/translations';
 import type { League, Match, Team, Player } from '@/types/context';
 
 type ModelType = 'deepseek' | 'medium' | 'fast';
@@ -39,6 +41,8 @@ export const ChatInputBubble: React.FC<ChatInputBubbleProps> = ({
     contextLocked,
     ...contextProps
 }) => {
+    const { language } = useLanguage();
+    const { t } = useTranslation(language);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // Auto-resize textarea
@@ -65,7 +69,7 @@ export const ChatInputBubble: React.FC<ChatInputBubbleProps> = ({
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Posez une question sur le football..."
+                    placeholder={t('chatPlaceholder')}
                     className="w-full pl-3 pr-14 py-4 text-slate-800 placeholder-slate-400 resize-none focus:outline-none text-base leading-relaxed bg-transparent min-h-[60px] rounded-t-xl"
                     rows={1}
                     disabled={isLoading}

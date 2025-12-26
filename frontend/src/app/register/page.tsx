@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { AuthManager } from "@/utils/auth";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useTranslation } from "@/i18n/translations";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -14,6 +16,8 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const { language } = useLanguage();
+  const { t } = useTranslation(language);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -22,7 +26,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await AuthManager.register(email, password, fullName);
-      setSuccess("Compte cree. Verifiez votre email.");
+      setSuccess(t('registerSuccess'));
       router.push("/login");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
@@ -42,9 +46,9 @@ export default function RegisterPage() {
             <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-3xl bg-white shadow-md ring-1 ring-slate-200/60">
               <Image src="/statos-s.svg" alt="STATOS" width={64} height={64} priority />
             </div>
-            <h1 className="mt-3 text-2xl font-semibold text-slate-900">Creer un compte</h1>
+            <h1 className="mt-3 text-2xl font-semibold text-slate-900">{t('registerTitle')}</h1>
             <p className="mt-2 text-sm text-slate-500">
-              Demarrez avec STATOS pour vos analyses.
+              {t('registerSubtitle')}
             </p>
           </div>
 
@@ -55,14 +59,14 @@ export default function RegisterPage() {
               </div>
             )}
             {success && (
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+              <div className="rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-sm text-teal-700">
                 {success}
               </div>
             )}
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                Nom complet
+                {t('fullName')}
               </label>
               <input
                 type="text"
@@ -71,13 +75,13 @@ export default function RegisterPage() {
                 required
                 autoComplete="name"
                 className="input-field"
-                placeholder="Prenom Nom"
+                placeholder={t('fullNamePlaceholder')}
               />
             </div>
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                Email
+                {t('email')}
               </label>
               <input
                 type="email"
@@ -86,13 +90,13 @@ export default function RegisterPage() {
                 required
                 autoComplete="email"
                 className="input-field"
-                placeholder="vous@email.com"
+                placeholder={t('emailPlaceholder')}
               />
             </div>
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                Mot de passe
+                {t('password')}
               </label>
               <input
                 type="password"
@@ -110,17 +114,17 @@ export default function RegisterPage() {
               disabled={loading}
               className="btn-primary w-full flex items-center justify-center"
             >
-              {loading ? "Creation..." : "Creer mon compte"}
+              {loading ? t('registering') : t('registerButton')}
             </button>
           </form>
 
           <div className="mt-6 text-center text-sm text-slate-500">
-            Deja un compte ?{" "}
+            {t('alreadyHaveAccount')}{" "}
             <Link
               href="/login"
               className="font-semibold text-teal-700 hover:text-teal-800"
             >
-              Se connecter
+              {t('loginButton')}
             </Link>
           </div>
         </div>

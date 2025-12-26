@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { ChatInputBubble } from "./chat/ChatInputBubble";
 import { useContextSelection } from "@/hooks/useContextSelection";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { AuthManager } from "@/utils/auth";
 import type { ChatContext, League } from "@/types/context";
 import type { Conversation, ConversationUpsert } from "@/types/conversation";
@@ -26,6 +27,7 @@ interface ChatRequest {
 
 interface EnrichedChatRequest extends ChatRequest {
   context?: ChatContext;
+  language?: string;
 }
 
 interface ChatResponse {
@@ -51,6 +53,9 @@ export default function ChatBubble({
   const [isLoading, setIsLoading] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [modelType, setModelType] = useState<'deepseek' | 'medium' | 'fast'>('deepseek');
+
+  // --- Language Hook ---
+  const { language } = useLanguage();
 
   // --- Context Selection Hook ---
   const {
@@ -171,6 +176,7 @@ export default function ChatBubble({
         session_id: sessionId || undefined,
         context: chatContext,
         model_type: modelType,
+        language: language,
       };
 
       const response = await AuthManager.authenticatedFetch('/chat/stream', {
@@ -351,7 +357,7 @@ export default function ChatBubble({
                 <Image src="/statos-s.svg" alt="STATOS" width={24} height={24} />
               </div>
               <div>
-                <span className="text-[10px] text-slate-500 font-medium">Assistant Football</span>
+                <span className="text-[10px] text-slate-500 font-medium">{useTranslation(language).t('assistantFootball')}</span>
               </div>
             </div>
           </div>

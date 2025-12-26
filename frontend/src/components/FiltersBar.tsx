@@ -390,7 +390,7 @@ export default function FiltersBar({
                       onClick={() => setSelectedStatus("upcoming")}
                       className={`flex-1 px-2 py-1 text-xs rounded ${
                         selectedStatus === "upcoming"
-                          ? "bg-blue-500 text-white"
+                          ? "bg-teal-500 text-white"
                           : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                       }`}
                     >
@@ -412,7 +412,7 @@ export default function FiltersBar({
                         } else if (status === "FT" || status === "AET" || status === "PEN") {
                           return <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded">Terminé</span>;
                         } else {
-                          return <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded">À venir</span>;
+                          return <span className="px-2 py-0.5 bg-teal-100 text-teal-700 text-xs font-semibold rounded">À venir</span>;
                         }
                       };
 

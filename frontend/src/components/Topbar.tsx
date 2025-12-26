@@ -22,7 +22,7 @@ export function Topbar({ sessionId, health }: TopbarProps) {
           {health && (
             <div className="hidden items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-xs text-slate-600 md:flex">
               <span
-                className={`h-1.5 w-1.5 rounded-full ${health.status === "ok" ? "bg-green-500" : "bg-amber-500"
+                className={`h-1.5 w-1.5 rounded-full ${health.status === "ok" ? "bg-teal-500" : "bg-amber-500"
                   }`}
               />
               <span>{health.llm_provider}</span>
@@ -31,7 +31,7 @@ export function Topbar({ sessionId, health }: TopbarProps) {
 
           {sessionId && (
             <div className="hidden items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-xs text-slate-600 lg:flex">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+              <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
               <span>Session active</span>
             </div>
           )}

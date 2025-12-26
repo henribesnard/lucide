@@ -19,7 +19,7 @@ export function RightSidebar({ insights, health }: RightSidebarProps) {
         </h3>
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
           <div className="flex items-center gap-2 text-xs">
-            <span className={`h-2 w-2 rounded-full ${health?.status === "ok" ? "bg-green-500" : "bg-amber-500"}`} />
+            <span className={`h-2 w-2 rounded-full ${health?.status === "ok" ? "bg-teal-500" : "bg-amber-500"}`} />
             <span className="font-medium text-slate-700">
               {health ? `${health.status.toUpperCase()} · ${health.llm_provider}` : "Chargement..."}
             </span>
@@ -32,8 +32,8 @@ export function RightSidebar({ insights, health }: RightSidebarProps) {
           Informations en temps réel
         </h3>
         <div className="space-y-2">
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
-            <span className="text-sm font-semibold text-emerald-700">Live ready</span>
+          <div className="flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2">
+            <span className="text-sm font-semibold text-teal-700">Live ready</span>
           </div>
           <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
             <span className="text-sm font-semibold text-amber-700">Cotes temps réel</span>

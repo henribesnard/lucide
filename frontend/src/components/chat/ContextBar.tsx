@@ -150,7 +150,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
                     icon={<TeamIcon className="w-5 h-5 text-slate-600" />}
                     selected={team}
                     onClear={handleTeamClear}
-                    colorScheme="blue"
+                    colorScheme="teal"
                     dashed={!team}
                     disabled={disabled}
                     renderSelected={(t) => (

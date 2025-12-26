@@ -15,6 +15,9 @@ import {
 } from "@heroicons/react/24/outline";
 import { AuthManager } from "@/utils/auth";
 import type { Conversation } from "@/types/conversation";
+import { useTheme, type ThemePreference } from "@/components/ThemeProvider";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useTranslation } from "@/i18n/translations";
 
 interface StoredUser {
   email?: string;
@@ -42,6 +45,9 @@ export default function MainSidebar({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [user, setUser] = useState<StoredUser | null>(null);
+  const { preference, setPreference } = useTheme();
+  const { language } = useLanguage();
+  const { t } = useTranslation(language);
 
   useEffect(() => {
     setUser(AuthManager.getUser());
@@ -68,7 +74,7 @@ export default function MainSidebar({
     return "U";
   })();
 
-  const displayName = fullName.trim() || userEmail.split("@")[0] || "Utilisateur";
+  const displayName = fullName.trim() || userEmail.split("@")[0] || t('user');
   const historyConversations = conversations.filter((c) => !c.isArchived);
   const archivedConversations = conversations.filter((c) => c.isArchived);
 
@@ -94,27 +100,27 @@ export default function MainSidebar({
     {
       id: "home",
       icon: HomeIcon,
-      label: "Accueil",
+      label: t('home'),
       hasSubmenu: false,
     },
     {
       id: "history",
       icon: ClockIcon,
-      label: "Historique",
+      label: t('history'),
       hasSubmenu: true,
       count: historyConversations.length,
     },
     {
       id: "archive",
       icon: ArchiveBoxIcon,
-      label: "Archives",
+      label: t('archives'),
       hasSubmenu: true,
       count: archivedConversations.length,
     },
     {
       id: "settings",
       icon: Cog6ToothIcon,
-      label: "Parametres",
+      label: t('settings'),
       hasSubmenu: false,
     },
   ];
@@ -145,7 +151,7 @@ export default function MainSidebar({
           <button
             onClick={() => setIsMobileMenuOpen(false)}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            aria-label="Fermer le menu"
+            aria-label={t('closeMenu')}
           >
             <XMarkIcon className="w-6 h-6 text-gray-700" />
           </button>
@@ -163,7 +169,7 @@ export default function MainSidebar({
             }}
           >
             <PlusIcon className="w-5 h-5" />
-            Nouvelle conversation
+            {t('newChat')}
           </button>
 
           {/* Menu Items */}
@@ -172,10 +178,20 @@ export default function MainSidebar({
               const Icon = item.icon;
               const isActive = activeSection === item.id;
 
+              const handleClick = () => {
+                if (item.id === 'settings') {
+                  window.location.href = '/settings';
+                } else if (item.id === 'home') {
+                  window.location.href = '/chat';
+                } else {
+                  setActiveSection(isActive ? null : item.id);
+                }
+              };
+
               return (
                 <button
                   key={item.id}
-                  onClick={() => setActiveSection(isActive ? null : item.id)}
+                  onClick={handleClick}
                   className={`w-full p-3 rounded-lg flex items-center gap-3 transition-all ${isActive
                     ? "bg-teal-50 text-teal-600"
                     : "text-gray-700 hover:bg-gray-100"
@@ -184,7 +200,7 @@ export default function MainSidebar({
                   <Icon className="w-5 h-5 flex-shrink-0" />
                   <span className="font-medium">{item.label}</span>
                   {item.count !== undefined && item.count > 0 && (
-                    <span className="ml-auto px-2 py-0.5 bg-teal-500 text-white text-xs rounded-full">
+                    <span className="ml-auto px-2 py-0.5 bg-teal-600 text-white text-xs rounded-full">
                       {item.count}
                     </span>
                   )}
@@ -197,7 +213,7 @@ export default function MainSidebar({
           {activeSection === "history" && (
             <div className="mt-4 pt-4 border-t border-gray-200">
               <h3 className="text-xs font-semibold text-gray-500 uppercase px-3 py-2">
-                Aujourd'hui
+                {t('today')}
               </h3>
               {historyConversations
                 .filter((c) => c.dateLabel === "Aujourd'hui")
@@ -223,7 +239,7 @@ export default function MainSidebar({
                       <button
                         onClick={() => toggleArchive(conv.id, true)}
                         className="p-1 rounded-md hover:bg-gray-100"
-                        aria-label="Archiver la conversation"
+                        aria-label={t('archiveConversation')}
                       >
                         <ArchiveBoxIcon className="w-4 h-4 text-gray-400" />
                       </button>
@@ -233,7 +249,7 @@ export default function MainSidebar({
               {historyConversations.filter((c) => c.dateLabel === "Aujourd'hui")
                 .length === 0 && (
                   <div className="p-3 text-xs text-gray-500">
-                    Aucune conversation aujourd'hui.
+                    {t('noConversationsToday')}
                   </div>
                 )}
             </div>
@@ -242,11 +258,11 @@ export default function MainSidebar({
           {activeSection === "archive" && (
             <div className="mt-4 pt-4 border-t border-gray-200">
               <h3 className="text-xs font-semibold text-gray-500 uppercase px-3 py-2">
-                Conversations archivees
+                {t('archivedConversations')}
               </h3>
               {archivedConversations.length === 0 && (
                 <div className="p-3 text-xs text-gray-500">
-                  Aucune conversation archivee.
+                  {t('noArchivedConversations')}
                 </div>
               )}
               {archivedConversations.map((conv) => {
@@ -274,7 +290,7 @@ export default function MainSidebar({
                     <button
                       onClick={() => toggleArchive(conv.id, false)}
                       className="p-1 rounded-md hover:bg-gray-100"
-                      aria-label="Restaurer la conversation"
+                      aria-label={t('restoreConversation')}
                     >
                       <ArrowUturnLeftIcon className="w-4 h-4 text-gray-400" />
                     </button>
@@ -308,7 +324,7 @@ export default function MainSidebar({
                 onClick={handleLogout}
                 className="w-full text-sm font-medium text-red-600 hover:text-red-700"
               >
-                Deconnexion
+                {t('logout')}
               </button>
             </div>
           )}
@@ -349,10 +365,20 @@ export default function MainSidebar({
             const Icon = item.icon;
             const isActive = activeSection === item.id;
 
+            const handleClick = () => {
+              if (item.id === 'settings') {
+                window.location.href = '/settings';
+              } else if (item.id === 'home') {
+                window.location.href = '/chat';
+              } else {
+                setActiveSection(isActive ? null : item.id);
+              }
+            };
+
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveSection(isActive ? null : item.id)}
+                onClick={handleClick}
                 className={`relative w-12 h-12 rounded-lg flex items-center justify-center transition-all ${isActive
                   ? "bg-teal-50 text-teal-600"
                   : "text-gray-600 hover:bg-gray-100"
@@ -361,7 +387,7 @@ export default function MainSidebar({
               >
                 <Icon className="w-6 h-6" />
                 {item.count !== undefined && item.count > 0 && (
-                  <span className="absolute top-1 right-1 w-4 h-4 bg-teal-500 text-white text-xs rounded-full flex items-center justify-center">
+                  <span className="absolute top-1 right-1 w-4 h-4 bg-teal-600 text-white text-xs rounded-full flex items-center justify-center">
                     {item.count}
                   </span>
                 )}
@@ -392,7 +418,7 @@ export default function MainSidebar({
                 onClick={handleLogout}
                 className="mt-3 w-full text-sm font-medium text-red-600 hover:text-red-700"
               >
-                Deconnexion
+                {t('logout')}
               </button>
             </div>
           )}
@@ -422,7 +448,7 @@ export default function MainSidebar({
                 {/* Groupes par date */}
                 <div className="mb-4">
                   <h3 className="text-xs font-semibold text-gray-500 uppercase px-3 py-2">
-                    Aujourd'hui
+                    {t('today')}
                   </h3>
                   {historyConversations
                     .filter((c) => c.dateLabel === "Aujourd'hui")
@@ -448,7 +474,7 @@ export default function MainSidebar({
                           <button
                             onClick={() => toggleArchive(conv.id, true)}
                             className="p-1 rounded-md hover:bg-gray-100"
-                            aria-label="Archiver la conversation"
+                            aria-label={t('archiveConversation')}
                           >
                             <ArchiveBoxIcon className="w-4 h-4 text-gray-400" />
                           </button>
@@ -458,14 +484,14 @@ export default function MainSidebar({
                   {historyConversations.filter((c) => c.dateLabel === "Aujourd'hui")
                     .length === 0 && (
                       <div className="px-3 py-2 text-xs text-gray-500">
-                        Aucune conversation aujourd'hui.
+                        {t('noConversationsToday')}
                       </div>
                     )}
                 </div>
 
                 <div className="mb-4">
                   <h3 className="text-xs font-semibold text-gray-500 uppercase px-3 py-2">
-                    Cette semaine
+                    {t('thisWeek')}
                   </h3>
                   {historyConversations
                     .filter((c) => c.dateLabel !== "Aujourd'hui")
@@ -494,7 +520,7 @@ export default function MainSidebar({
                           <button
                             onClick={() => toggleArchive(conv.id, true)}
                             className="p-1 rounded-md hover:bg-gray-100"
-                            aria-label="Archiver la conversation"
+                            aria-label={t('archiveConversation')}
                           >
                             <ArchiveBoxIcon className="w-4 h-4 text-gray-400" />
                           </button>
@@ -504,7 +530,7 @@ export default function MainSidebar({
                   {historyConversations.filter((c) => c.dateLabel !== "Aujourd'hui")
                     .length === 0 && (
                       <div className="px-3 py-2 text-xs text-gray-500">
-                        Aucune conversation cette semaine.
+                        {t('noConversationsThisWeek')}
                       </div>
                     )}
                 </div>
@@ -516,7 +542,7 @@ export default function MainSidebar({
                 {archivedConversations.length === 0 && (
                   <div className="p-4 text-center text-gray-500">
                     <ArchiveBoxIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                    <p className="text-sm">Aucune conversation archivee</p>
+                    <p className="text-sm">{t('noArchivedConversations')}</p>
                   </div>
                 )}
                 {archivedConversations.map((conv) => {
@@ -544,7 +570,7 @@ export default function MainSidebar({
                       <button
                         onClick={() => toggleArchive(conv.id, false)}
                         className="p-1 rounded-md hover:bg-gray-100"
-                        aria-label="Restaurer la conversation"
+                        aria-label={t('restoreConversation')}
                       >
                         <ArrowUturnLeftIcon className="w-4 h-4 text-gray-400" />
                       </button>
@@ -558,23 +584,29 @@ export default function MainSidebar({
               <div className="p-4 space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
-                    Theme
+                    {t('theme')}
                   </label>
-                  <select className="w-full p-2 border border-gray-200 rounded-lg text-sm">
-                    <option>Clair</option>
-                    <option>Sombre</option>
-                    <option>Auto</option>
+                  <select
+                    className="w-full p-2 border border-gray-200 rounded-lg text-sm"
+                    value={preference}
+                    onChange={(event) =>
+                      setPreference(event.target.value as ThemePreference)
+                    }
+                  >
+                    <option value="light">{t('light')}</option>
+                    <option value="dark">{t('dark')}</option>
+                    <option value="auto">{t('auto')}</option>
                   </select>
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
-                    Langue
+                    {t('languageSettings')}
                   </label>
                   <select className="w-full p-2 border border-gray-200 rounded-lg text-sm">
-                    <option>Francais</option>
-                    <option>English</option>
-                    <option>Espanol</option>
+                    <option>{t('french')}</option>
+                    <option>{t('english')}</option>
+                    <option>{t('spanish')}</option>
                   </select>
                 </div>
               </div>

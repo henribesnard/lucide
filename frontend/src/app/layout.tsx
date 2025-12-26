@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Space_Grotesk, IBM_Plex_Sans } from "next/font/google";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import "./globals.css";
 
 const plexSans = IBM_Plex_Sans({
@@ -25,15 +28,38 @@ export const metadata: Metadata = {
   },
 };
 
+const themeScript = `
+(function () {
+  try {
+    var key = "statos-theme-preference";
+    var stored = localStorage.getItem(key);
+    var preference = stored === "light" || stored === "dark" || stored === "auto" ? stored : "auto";
+    var mql = window.matchMedia("(prefers-color-scheme: dark)");
+    var resolved = preference === "auto" ? (mql.matches ? "dark" : "light") : preference;
+    var root = document.documentElement;
+    root.dataset.theme = resolved;
+    root.dataset.themePreference = preference;
+    root.style.colorScheme = resolved;
+  } catch (e) {}
+})();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr">
-      <body className={`${plexSans.variable} ${spaceGrotesk.variable} bg-slatebg`}>
-        {children}
+    <html lang="fr" data-theme="light" suppressHydrationWarning>
+      <body className={`${plexSans.variable} ${spaceGrotesk.variable} bg-app text-ink`}>
+        <Script id="theme-init" strategy="beforeInteractive">
+          {themeScript}
+        </Script>
+        <ThemeProvider>
+          <LanguageProvider>
+            {children}
+          </LanguageProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

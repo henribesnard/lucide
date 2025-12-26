@@ -98,7 +98,7 @@ export const LeagueDropdown: React.FC<LeagueDropdownProps> = ({
                         <span>{countryLabel}</span>
                     </div>
                 </div>
-                <div className={`px-2 py-0.5 rounded text-[9px] font-medium uppercase ${league.type === 'cup' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
+                <div className={`px-2 py-0.5 rounded text-[9px] font-medium uppercase ${league.type === 'cup' ? 'bg-amber-100 text-amber-600' : 'bg-teal-100 text-teal-700'}`}>
                     {typeLabel}
                 </div>
             </button>

@@ -31,8 +31,8 @@ const colorStyles: Record<ColorScheme, { selected: string; hover: string }> = {
         hover: 'hover:border-rose-400 hover:bg-rose-50 hover:text-rose-500',
     },
     blue: {
-        selected: 'bg-blue-50 border-blue-200 hover:bg-blue-100 text-blue-700',
-        hover: 'hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600',
+        selected: 'bg-teal-50 border-teal-200 hover:bg-teal-100 text-teal-700',
+        hover: 'hover:border-teal-400 hover:bg-teal-50 hover:text-teal-600',
     },
     purple: {
         selected: 'bg-purple-50 border-purple-200 hover:bg-purple-100 text-purple-700',

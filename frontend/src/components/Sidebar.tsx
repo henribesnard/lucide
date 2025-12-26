@@ -110,7 +110,7 @@ export function Sidebar() {
         </nav>
 
         <div className="border-t border-slate-200 p-4">
-          <div className="rounded-lg bg-gradient-to-br from-teal-50 to-blue-50 p-3">
+          <div className="rounded-lg bg-gradient-to-br from-teal-50 to-teal-100 p-3">
             <p className="text-xs font-semibold text-teal-900">Assistant STATOS</p>
             <p className="mt-1 text-xs text-slate-600">
               Propulse par API-Football + IA

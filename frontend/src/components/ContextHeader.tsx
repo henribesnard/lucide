@@ -86,7 +86,7 @@ export default function ContextHeader({ fixtureId, leagueId, season }: ContextHe
 
   if (loading && !context) {
     return (
-      <div className="w-full bg-gradient-to-r from-teal-50 to-blue-50 border-b border-gray-200">
+      <div className="w-full bg-gradient-to-r from-teal-50 to-teal-100 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="animate-pulse flex items-center space-x-4">
             <div className="h-4 bg-gray-200 rounded w-1/4"></div>
@@ -127,11 +127,11 @@ export default function ContextHeader({ fixtureId, leagueId, season }: ContextHe
     }
 
     if (status === 'upcoming') {
-      return <span className={`${baseClasses} bg-blue-100 text-blue-800`}>À VENIR</span>;
+      return <span className={`${baseClasses} bg-teal-50 text-teal-700`}>À VENIR</span>;
     }
 
     if (status === 'current') {
-      return <span className={`${baseClasses} bg-green-100 text-green-800`}>EN COURS</span>;
+      return <span className={`${baseClasses} bg-teal-100 text-teal-800`}>EN COURS</span>;
     }
 
     if (status === 'past') {
@@ -153,7 +153,7 @@ export default function ContextHeader({ fixtureId, leagueId, season }: ContextHe
   };
 
   return (
-    <div className="w-full bg-gradient-to-r from-teal-50 to-blue-50 border-b border-gray-200">
+    <div className="w-full bg-gradient-to-r from-teal-50 to-teal-100 border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 py-3">
         {context.context_type === 'match' ? (
           <div className="flex items-center justify-between flex-wrap gap-2">

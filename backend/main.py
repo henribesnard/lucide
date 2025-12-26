@@ -67,7 +67,7 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = None
     context: Optional[Dict[str, Any]] = None
     model_type: Optional[str] = "slow"  # "slow" (DeepSeek, par défaut), "medium" (GPT-4o-mini), "fast" (GPT-4o)
-    language: Optional[str] = "fr"  # "fr" (français) ou "en" (anglais)
+    language: Optional[str] = None  # "fr" (français) ou "en" (anglais) - None = use user's preferred_language
 
 
 class ChatResponse(BaseModel):

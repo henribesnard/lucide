@@ -79,7 +79,7 @@ export const TeamDropdown: React.FC<TeamDropdownProps> = ({
             <button
               key={team.id}
               onClick={() => onSelect(team)}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-blue-50 transition-colors text-left"
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-teal-50 transition-colors text-left"
             >
               <img
                 src={team.logo}

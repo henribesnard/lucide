@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { AuthManager } from "@/utils/auth";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useTranslation } from "@/i18n/translations";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,6 +14,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const { language } = useLanguage();
+  const { t } = useTranslation(language);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -38,9 +42,9 @@ export default function LoginPage() {
             <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-3xl bg-white shadow-md ring-1 ring-slate-200/60">
               <Image src="/statos-s.svg" alt="STATOS" width={64} height={64} priority />
             </div>
-            <h1 className="mt-3 text-2xl font-semibold text-slate-900">Connexion</h1>
+            <h1 className="mt-3 text-2xl font-semibold text-slate-900">{t('loginTitle')}</h1>
             <p className="mt-2 text-sm text-slate-500">
-              Accedez a votre espace de travail.
+              {t('loginSubtitle')}
             </p>
           </div>
 
@@ -53,7 +57,7 @@ export default function LoginPage() {
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                Email
+                {t('email')}
               </label>
               <input
                 type="email"
@@ -62,13 +66,13 @@ export default function LoginPage() {
                 required
                 autoComplete="email"
                 className="input-field"
-                placeholder="vous@email.com"
+                placeholder={t('emailPlaceholder')}
               />
             </div>
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                Mot de passe
+                {t('password')}
               </label>
               <input
                 type="password"
@@ -86,17 +90,17 @@ export default function LoginPage() {
               disabled={loading}
               className="btn-primary w-full flex items-center justify-center"
             >
-              {loading ? "Connexion..." : "Se connecter"}
+              {loading ? t('loggingIn') : t('loginButton')}
             </button>
           </form>
 
           <div className="mt-6 text-center text-sm text-slate-500">
-            Pas de compte ?{" "}
+            {t('dontHaveAccount')}{" "}
             <Link
               href="/register"
               className="font-semibold text-teal-700 hover:text-teal-800"
             >
-              Creer un compte
+              {t('createAccount')}
             </Link>
           </div>
         </div>

@@ -20,21 +20,21 @@ const modelOptions: ModelOption[] = [
         label: 'DeepSeek (Base)',
         description: 'DeepSeek - Meilleur rapport qualité/prix',
         badge: 'Économique',
-        badgeColor: 'bg-green-100 text-green-600'
+        badgeColor: 'bg-teal-100 text-teal-700'
     },
     {
         value: 'medium',
         label: 'Medium (Équilibré)',
         description: 'GPT-4o-mini - Bon compromis vitesse/qualité',
         badge: 'Équilibré',
-        badgeColor: 'bg-blue-100 text-blue-600'
+        badgeColor: 'bg-teal-50 text-teal-600'
     },
     {
         value: 'fast',
         label: 'Fast (Premium)',
         description: 'GPT-4o - Meilleure qualité et rapidité',
         badge: 'Premium',
-        badgeColor: 'bg-purple-100 text-purple-600'
+        badgeColor: 'bg-amber-100 text-amber-700'
     }
 ];
 
