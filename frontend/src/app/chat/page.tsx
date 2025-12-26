@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
+import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import ChatBubble from "@/components/ChatBubble";
 import MainSidebar from "@/components/MainSidebar";
 import { ConversationsAPI, type ConversationListItem } from "@/utils/conversations";
@@ -164,33 +165,35 @@ export default function ChatPage() {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-slate-50">
-        {error && (
-          <div className="fixed top-4 right-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg shadow-md z-50">
-            <p className="text-sm font-medium">{error}</p>
-            <button
-              onClick={() => setError(null)}
-              className="absolute top-1 right-1 text-red-600 hover:text-red-800"
-            >
-              ×
-            </button>
-          </div>
-        )}
+      <RouteErrorBoundary routeName="chat">
+        <div className="min-h-screen bg-slate-50">
+          {error && (
+            <div className="fixed top-4 right-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg shadow-md z-50">
+              <p className="text-sm font-medium">{error}</p>
+              <button
+                onClick={() => setError(null)}
+                className="absolute top-1 right-1 text-red-600 hover:text-red-800"
+              >
+                ×
+              </button>
+            </div>
+          )}
 
-        <MainSidebar
-          conversations={conversations}
-          activeConversationId={activeConversationId}
-          onSelectConversation={handleSelectConversation}
-          onNewConversation={handleNewConversation}
-          onToggleArchive={handleToggleArchive}
-        />
-        <div className="w-full lg:ml-16">
-          <ChatBubble
-            activeConversation={activeConversation}
-            onConversationUpsert={handleConversationUpsert}
+          <MainSidebar
+            conversations={conversations}
+            activeConversationId={activeConversationId}
+            onSelectConversation={handleSelectConversation}
+            onNewConversation={handleNewConversation}
+            onToggleArchive={handleToggleArchive}
           />
+          <div className="w-full lg:ml-16">
+            <ChatBubble
+              activeConversation={activeConversation}
+              onConversationUpsert={handleConversationUpsert}
+            />
+          </div>
         </div>
-      </div>
+      </RouteErrorBoundary>
     </AuthGuard>
   );
 }

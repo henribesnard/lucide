@@ -80,7 +80,7 @@ export const DateSelector: React.FC<DateSelectorProps> = ({
                         onClick={goToToday}
                         className="text-[11px] text-teal-600 hover:text-teal-700 font-semibold underline-offset-2 hover:underline"
                     >
-                        Revenir à aujourd'hui
+                        Revenir à aujourd&apos;hui
                     </button>
                 </div>
             )}

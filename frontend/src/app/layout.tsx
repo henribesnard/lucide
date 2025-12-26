@@ -3,6 +3,7 @@ import Script from "next/script";
 import { Space_Grotesk, IBM_Plex_Sans } from "next/font/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import "./globals.css";
 
 const plexSans = IBM_Plex_Sans({
@@ -57,7 +58,9 @@ export default function RootLayout({
         </Script>
         <ThemeProvider>
           <LanguageProvider>
-            {children}
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
           </LanguageProvider>
         </ThemeProvider>
       </body>

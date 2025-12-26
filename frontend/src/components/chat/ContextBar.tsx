@@ -43,7 +43,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
     favoriteLeagueIds,
     loadingLeagues,
     disabled,
-    modelType = 'slow',
+    modelType = 'deepseek',
     onLeagueSelect,
     onMatchSelect,
     onTeamSelect,

@@ -27,7 +27,13 @@ export default function SettingsPage() {
     <AuthGuard>
       <div className="flex h-screen">
         {/* Sidebar */}
-        <MainSidebar activeConversationId={null} />
+        <MainSidebar
+          conversations={[]}
+          activeConversationId={null}
+          onSelectConversation={() => {}}
+          onNewConversation={() => {}}
+          onToggleArchive={() => {}}
+        />
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col bg-gray-50 dark:bg-gray-900">

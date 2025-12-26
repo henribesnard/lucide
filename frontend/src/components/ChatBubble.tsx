@@ -6,6 +6,7 @@ import Image from "next/image";
 import { ChatInputBubble } from "./chat/ChatInputBubble";
 import { useContextSelection } from "@/hooks/useContextSelection";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useTranslation } from "@/i18n/translations";
 import { AuthManager } from "@/utils/auth";
 import type { ChatContext, League } from "@/types/context";
 import type { Conversation, ConversationUpsert } from "@/types/conversation";
@@ -56,6 +57,7 @@ export default function ChatBubble({
 
   // --- Language Hook ---
   const { language } = useLanguage();
+  const { t } = useTranslation(language);
 
   // --- Context Selection Hook ---
   const {
@@ -357,7 +359,7 @@ export default function ChatBubble({
                 <Image src="/statos-s.svg" alt="STATOS" width={24} height={24} />
               </div>
               <div>
-                <span className="text-[10px] text-slate-500 font-medium">{useTranslation(language).t('assistantFootball')}</span>
+                <span className="text-[10px] text-slate-500 font-medium">{t('assistantFootball')}</span>
               </div>
             </div>
           </div>
