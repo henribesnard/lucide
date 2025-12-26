@@ -75,6 +75,7 @@ export default function MainSidebar({
   })();
 
   const displayName = fullName.trim() || userEmail.split("@")[0] || t('user');
+  const todayLabel = language === 'fr' ? 'Aujourd\'hui' : 'Today';
   const historyConversations = conversations.filter((c) => !c.isArchived);
   const archivedConversations = conversations.filter((c) => c.isArchived);
 
@@ -214,7 +215,7 @@ export default function MainSidebar({
                 {t('today')}
               </h3>
               {historyConversations
-                .filter((c) => c.dateLabel === "Aujourd'hui")
+                .filter((c) => c.dateLabel === todayLabel)
                 .map((conv) => {
                   const isActive = conv.id === activeConversationId;
                   return (
@@ -244,7 +245,7 @@ export default function MainSidebar({
                     </div>
                   );
                 })}
-              {historyConversations.filter((c) => c.dateLabel === "Aujourd'hui")
+              {historyConversations.filter((c) => c.dateLabel === todayLabel)
                 .length === 0 && (
                   <div className="p-3 text-xs text-gray-500">
                     {t('noConversationsToday')}
@@ -526,7 +527,7 @@ export default function MainSidebar({
                     {t('today')}
                   </h3>
                   {historyConversations
-                    .filter((c) => c.dateLabel === "Aujourd'hui")
+                    .filter((c) => c.dateLabel === todayLabel)
                     .map((conv) => {
                       const isActive = conv.id === activeConversationId;
                       return (
@@ -556,7 +557,7 @@ export default function MainSidebar({
                         </div>
                       );
                     })}
-                  {historyConversations.filter((c) => c.dateLabel === "Aujourd'hui")
+                  {historyConversations.filter((c) => c.dateLabel === todayLabel)
                     .length === 0 && (
                       <div className="px-3 py-2 text-xs text-gray-500">
                         {t('noConversationsToday')}
@@ -569,7 +570,7 @@ export default function MainSidebar({
                     {t('thisWeek')}
                   </h3>
                   {historyConversations
-                    .filter((c) => c.dateLabel !== "Aujourd'hui")
+                    .filter((c) => c.dateLabel !== todayLabel)
                     .map((conv) => {
                       const isActive = conv.id === activeConversationId;
                       return (
@@ -602,7 +603,7 @@ export default function MainSidebar({
                         </div>
                       );
                     })}
-                  {historyConversations.filter((c) => c.dateLabel !== "Aujourd'hui")
+                  {historyConversations.filter((c) => c.dateLabel !== todayLabel)
                     .length === 0 && (
                       <div className="px-3 py-2 text-xs text-gray-500">
                         {t('noConversationsThisWeek')}

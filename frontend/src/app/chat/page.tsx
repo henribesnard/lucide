@@ -7,29 +7,31 @@ import ChatBubble from "@/components/ChatBubble";
 import MainSidebar from "@/components/MainSidebar";
 import { ConversationsAPI, type ConversationListItem } from "@/utils/conversations";
 import type { Conversation, ConversationUpsert } from "@/types/conversation";
+import { useLanguage } from "@/contexts/LanguageContext";
 
-const getDateLabel = (isoDate: string) => {
+const getDateLabel = (isoDate: string, language: 'fr' | 'en' = 'fr') => {
   const target = new Date(isoDate);
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const targetDay = new Date(target.getFullYear(), target.getMonth(), target.getDate());
   const diffDays = Math.round((today.getTime() - targetDay.getTime()) / 86400000);
 
-  if (diffDays === 0) return "Aujourd'hui";
-  if (diffDays === 1) return "Hier";
-  return target.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
+  if (diffDays === 0) return language === 'fr' ? 'Aujourd\'hui' : 'Today';
+  if (diffDays === 1) return language === 'fr' ? 'Hier' : 'Yesterday';
+  const locale = language === 'fr' ? 'fr-FR' : 'en-US';
+  return target.toLocaleDateString(locale, { day: "2-digit", month: "short" });
 };
 
 /**
  * Convertir une conversation de l'API vers le format frontend
  */
-const apiToFrontendConversation = (apiConv: ConversationListItem): Conversation => {
+const apiToFrontendConversation = (apiConv: ConversationListItem, language: 'fr' | 'en' = 'fr'): Conversation => {
   return {
     id: apiConv.conversation_id,
     sessionId: apiConv.conversation_id,
     title: apiConv.title,
     preview: "", // Sera rempli quand on charge les messages
-    dateLabel: getDateLabel(apiConv.updated_at),
+    dateLabel: getDateLabel(apiConv.updated_at, language),
     createdAt: apiConv.created_at,
     updatedAt: apiConv.updated_at,
     messages: [],
@@ -38,6 +40,7 @@ const apiToFrontendConversation = (apiConv: ConversationListItem): Conversation 
 };
 
 export default function ChatPage() {
+  const { language } = useLanguage();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -57,7 +60,7 @@ export default function ChatPage() {
         ConversationsAPI.list(true),
       ]);
 
-      const allConversations = [...activeConvs, ...archivedConvs].map(apiToFrontendConversation);
+      const allConversations = [...activeConvs, ...archivedConvs].map(conv => apiToFrontendConversation(conv, language));
       setConversations(allConversations);
     } catch (err) {
       console.error("Failed to load conversations:", err);
@@ -66,7 +69,7 @@ export default function ChatPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [language]);
 
   /**
    * Charger les conversations au montage du composant
@@ -93,7 +96,7 @@ export default function ChatPage() {
         sessionId: update.sessionId,
         title: update.title || existing?.title || "Conversation",
         preview: update.preview || existing?.preview || "",
-        dateLabel: getDateLabel(now),
+        dateLabel: getDateLabel(now, language),
         createdAt: existing?.createdAt || update.createdAt || now,
         updatedAt: now,
         context: update.context || existing?.context,
