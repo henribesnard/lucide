@@ -45,8 +45,8 @@ export default function MainSidebar({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [user, setUser] = useState<StoredUser | null>(null);
-  const { preference, setPreference } = useTheme();
-  const { language } = useLanguage();
+  const { preference: theme, setPreference: setTheme } = useTheme();
+  const { language, setLanguage } = useLanguage();
   const { t } = useTranslation(language);
 
   useEffect(() => {
@@ -121,7 +121,7 @@ export default function MainSidebar({
       id: "settings",
       icon: Cog6ToothIcon,
       label: t('settings'),
-      hasSubmenu: false,
+      hasSubmenu: true,
     },
   ];
 
@@ -179,9 +179,7 @@ export default function MainSidebar({
               const isActive = activeSection === item.id;
 
               const handleClick = () => {
-                if (item.id === 'settings') {
-                  window.location.href = '/settings';
-                } else if (item.id === 'home') {
+                if (item.id === 'home') {
                   window.location.href = '/chat';
                 } else {
                   setActiveSection(isActive ? null : item.id);
@@ -299,6 +297,85 @@ export default function MainSidebar({
               })}
             </div>
           )}
+
+          {activeSection === "settings" && (
+            <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
+              {/* Language Settings */}
+              <div>
+                <h3 className="text-xs font-semibold text-gray-500 uppercase px-3 py-2">
+                  {t('languageSettings')}
+                </h3>
+                <div className="space-y-2 px-3">
+                  <button
+                    onClick={() => setLanguage('fr')}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                      language === 'fr'
+                        ? 'border-teal-500 bg-teal-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="text-2xl">🇫🇷</span>
+                    <div className="text-left flex-1">
+                      <div className="font-medium text-sm text-gray-900">
+                        {t('french')}
+                      </div>
+                      <div className="text-xs text-gray-500">Français</div>
+                    </div>
+                    {language === 'fr' && (
+                      <svg className="w-5 h-5 text-teal-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setLanguage('en')}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                      language === 'en'
+                        ? 'border-teal-500 bg-teal-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="text-2xl">🇬🇧</span>
+                    <div className="text-left flex-1">
+                      <div className="font-medium text-sm text-gray-900">
+                        {t('english')}
+                      </div>
+                      <div className="text-xs text-gray-500">English</div>
+                    </div>
+                    {language === 'en' && (
+                      <svg className="w-5 h-5 text-teal-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Theme Settings */}
+              <div>
+                <h3 className="text-xs font-semibold text-gray-500 uppercase px-3 py-2">
+                  {language === 'fr' ? 'Thème' : 'Theme'}
+                </h3>
+                <div className="grid grid-cols-3 gap-2 px-3">
+                  {(['light', 'dark', 'auto'] as ThemePreference[]).map((themeOption) => (
+                    <button
+                      key={themeOption}
+                      onClick={() => setTheme(themeOption)}
+                      className={`px-3 py-2 rounded-lg border-2 transition-all text-sm ${
+                        theme === themeOption
+                          ? 'border-teal-500 bg-teal-50 text-teal-700 font-medium'
+                          : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                      }`}
+                    >
+                      {themeOption === 'light' && (language === 'fr' ? 'Clair' : 'Light')}
+                      {themeOption === 'dark' && (language === 'fr' ? 'Sombre' : 'Dark')}
+                      {themeOption === 'auto' && 'Auto'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Mobile Footer - User */}
@@ -366,9 +443,7 @@ export default function MainSidebar({
             const isActive = activeSection === item.id;
 
             const handleClick = () => {
-              if (item.id === 'settings') {
-                window.location.href = '/settings';
-              } else if (item.id === 'home') {
+              if (item.id === 'home') {
                 window.location.href = '/chat';
               } else {
                 setActiveSection(isActive ? null : item.id);
@@ -581,33 +656,85 @@ export default function MainSidebar({
             )}
 
             {activeSection === "settings" && (
-              <div className="p-4 space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    {t('theme')}
-                  </label>
-                  <select
-                    className="w-full p-2 border border-gray-200 rounded-lg text-sm"
-                    value={preference}
-                    onChange={(event) =>
-                      setPreference(event.target.value as ThemePreference)
-                    }
-                  >
-                    <option value="light">{t('light')}</option>
-                    <option value="dark">{t('dark')}</option>
-                    <option value="auto">{t('auto')}</option>
-                  </select>
+              <div className="p-4 space-y-6">
+                {/* Language Settings */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                    {t('languageSettings')}
+                  </h3>
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => setLanguage('fr')}
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                        language === 'fr'
+                          ? 'border-teal-500 bg-teal-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <span className="text-2xl">🇫🇷</span>
+                      <div className="text-left flex-1">
+                        <div className="font-medium text-sm text-gray-900">
+                          {t('french')}
+                        </div>
+                        <div className="text-xs text-gray-500">Français</div>
+                      </div>
+                      {language === 'fr' && (
+                        <svg className="w-5 h-5 text-teal-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setLanguage('en')}
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                        language === 'en'
+                          ? 'border-teal-500 bg-teal-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <span className="text-2xl">🇬🇧</span>
+                      <div className="text-left flex-1">
+                        <div className="font-medium text-sm text-gray-900">
+                          {t('english')}
+                        </div>
+                        <div className="text-xs text-gray-500">English</div>
+                      </div>
+                      {language === 'en' && (
+                        <svg className="w-5 h-5 text-teal-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {language === 'fr'
+                      ? 'Change la langue de l\'interface. Les réponses du chatbot s\'adapteront automatiquement.'
+                      : 'Changes the interface language. Chatbot responses will adapt automatically.'}
+                  </p>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    {t('languageSettings')}
-                  </label>
-                  <select className="w-full p-2 border border-gray-200 rounded-lg text-sm">
-                    <option>{t('french')}</option>
-                    <option>{t('english')}</option>
-                    <option>{t('spanish')}</option>
-                  </select>
+                {/* Theme Settings */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                    {language === 'fr' ? 'Thème' : 'Theme'}
+                  </h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['light', 'dark', 'auto'] as ThemePreference[]).map((themeOption) => (
+                      <button
+                        key={themeOption}
+                        onClick={() => setTheme(themeOption)}
+                        className={`px-3 py-2 rounded-lg border-2 transition-all text-sm ${
+                          theme === themeOption
+                            ? 'border-teal-500 bg-teal-50 text-teal-700 font-medium'
+                            : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                        }`}
+                      >
+                        {themeOption === 'light' && (language === 'fr' ? 'Clair' : 'Light')}
+                        {themeOption === 'dark' && (language === 'fr' ? 'Sombre' : 'Dark')}
+                        {themeOption === 'auto' && 'Auto'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
