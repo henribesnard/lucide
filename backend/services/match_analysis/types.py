@@ -46,6 +46,7 @@ class NormalizedIDs(BaseModel):
 
     league_id: int
     league_name: str
+    league_type: str = "cup"  # "cup" ou "league"
     season: int
     team_a_id: int
     team_a_name: str

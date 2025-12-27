@@ -58,9 +58,15 @@ class DataCollector:
         if input_data.coach_team_b:
             coach_b_id = await self._resolve_coach(input_data.coach_team_b, team_b_id)
 
+        # 6) Récupérer le type de league (cup ou league)
+        league_type = await self.api.get_league_type(league_id, season)
+        league_type = league_type.lower() if league_type in ["Cup", "League"] else "cup"
+        logger.info(f"League type: {league_type}")
+
         normalized = NormalizedIDs(
             league_id=league_id,
             league_name=league_name,
+            league_type=league_type,
             season=season,
             team_a_id=team_a_id,
             team_a_name=team_a_name,
@@ -323,11 +329,21 @@ class DataCollector:
         # Collecter les derniers matchs de chaque equipe (TOUTES COMPS)
         logger.info(f"Collecte des {num_matches} derniers matchs (toutes competitions)...")
 
-        team_a_fixtures = await self._get_team_last_matches(
+        team_a_fixtures_all = await self._get_team_last_matches(
             normalized.team_a_id, num_matches
         )
-        team_b_fixtures = await self._get_team_last_matches(
+        team_b_fixtures_all = await self._get_team_last_matches(
             normalized.team_b_id, num_matches
+        )
+
+        # NOUVEAU: Collecter les matchs dans la league (TOUTES saisons disponibles)
+        logger.info(f"Collecte matchs historiques dans {normalized.league_name} (toutes éditions)...")
+
+        team_a_fixtures_league = await self._get_team_league_matches(
+            normalized.team_a_id, normalized.league_id
+        )
+        team_b_fixtures_league = await self._get_team_league_matches(
+            normalized.team_b_id, normalized.league_id
         )
 
         # H2H
@@ -336,8 +352,9 @@ class DataCollector:
         )
 
         # Combiner tous les fixture IDs pour collecte detaillee
+        # Inclut: matchs generaux + matchs league + h2h
         all_fixture_ids = set()
-        for fixture in team_a_fixtures + team_b_fixtures + h2h_fixtures:
+        for fixture in team_a_fixtures_all + team_b_fixtures_all + team_a_fixtures_league + team_b_fixtures_league + h2h_fixtures:
             all_fixture_ids.add(fixture["fixture"]["id"])
 
         logger.info(f"Total de {len(all_fixture_ids)} matchs uniques a analyser")
@@ -393,14 +410,22 @@ class DataCollector:
         sidelined_b = await self._get_sidelined(normalized.team_b_id)
 
         logger.info(
-            f"Collecte terminee: {len(team_a_fixtures)} matchs team A, "
-            f"{len(team_b_fixtures)} matchs team B, {len(h2h_fixtures)} H2H, "
+            f"Collecte terminee: {len(team_a_fixtures_all)} matchs team A (all), "
+            f"{len(team_a_fixtures_league)} matchs team A (league), "
+            f"{len(team_b_fixtures_all)} matchs team B (all), "
+            f"{len(team_b_fixtures_league)} matchs team B (league), "
+            f"{len(h2h_fixtures)} H2H, "
             f"{len(events_by_fixture)} matchs avec events"
         )
 
         return {
-            "team_a_all_matches": team_a_fixtures,
-            "team_b_all_matches": team_b_fixtures,
+            # Matchs generaux (toutes competitions)
+            "team_a_all_matches": team_a_fixtures_all,
+            "team_b_all_matches": team_b_fixtures_all,
+            # NOUVEAU: Matchs dans la league specifique
+            "team_a_league_matches": team_a_fixtures_league,
+            "team_b_league_matches": team_b_fixtures_league,
+            # H2H et details
             "h2h_matches": h2h_fixtures,
             "events_by_fixture": events_by_fixture,
             "stats_by_fixture": stats_by_fixture,
@@ -421,6 +446,70 @@ class DataCollector:
             return data if data else []
         except Exception as e:
             logger.error(f"Erreur get_team_last_matches: {e}")
+            return []
+
+    async def _get_team_league_matches(
+        self, team_id: int, league_id: int
+    ) -> List[Dict[str, Any]]:
+        """
+        Recupere les matchs d'une team dans une league sur TOUTES les saisons disponibles.
+
+        Ex: Tous les matchs de Benin en CAN (toutes éditions historiques)
+
+        1. Récupère toutes les saisons disponibles pour la league via /leagues?id=X
+        2. Pour chaque saison, récupère les matchs de l'équipe via /fixtures?team=X&league=Y&season=Z
+
+        Cela permet d'analyser la forme historique complète de l'équipe dans cette compétition
+        et de détecter des patterns comme "ne gagne jamais en temps régulier à la CAN".
+        """
+        all_matches = []
+
+        try:
+            # 1) Récupérer toutes les saisons disponibles pour cette league
+            logger.info(f"Récupération des saisons disponibles pour league {league_id}...")
+            league_info = await self.api.get_leagues(league_id=league_id)
+            self.api_call_count += 1
+
+            if not league_info or len(league_info) == 0:
+                logger.warning(f"Aucune info trouvée pour league {league_id}")
+                return []
+
+            seasons = league_info[0].get("seasons", [])
+            available_seasons = [s["year"] for s in seasons]
+
+            logger.info(f"League {league_id}: {len(available_seasons)} saisons disponibles")
+
+            # 2) Pour chaque saison, récupérer les matchs de l'équipe
+            logger.info(f"Collecte matchs pour team {team_id} dans league {league_id}...")
+
+            for season in available_seasons:
+                if season < 2015:  # Limiter aux données récentes (depuis 2015)
+                    continue
+
+                try:
+                    data = await self.api.get_fixtures(
+                        team_id=team_id,
+                        league_id=league_id,
+                        season=season
+                    )
+                    self.api_call_count += 1
+
+                    if data:
+                        all_matches.extend(data)
+                        logger.info(f"  Saison {season}: {len(data)} matchs")
+
+                except Exception as e:
+                    logger.debug(f"  Saison {season}: aucun match - {e}")
+                    continue
+
+            logger.info(f"Team {team_id} dans league {league_id}: {len(all_matches)} matchs au total")
+
+            return all_matches
+
+        except Exception as e:
+            logger.error(f"Erreur get_team_league_matches: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return []
 
     async def _get_h2h_fixtures(

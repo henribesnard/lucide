@@ -360,6 +360,108 @@ class EventsAnalyzer:
             "threshold_minute": threshold_minute,
         }
 
+    def analyze_by_competition_phase(
+        self,
+        matches_df: pd.DataFrame,
+        league_type: str
+    ) -> Dict[str, Any]:
+        """
+        Analyse les performances par phase de compétition.
+
+        Pour les COUPES: Group Stage - 1/2/3, Round of 16, Quarter-finals, etc.
+        Pour les LEAGUES: Journée 1, Journée 10, Journée 38, ou début/milieu/fin
+
+        Returns:
+            Dict avec performances par phase
+        """
+        if matches_df.empty or "round" not in matches_df.columns:
+            return {}
+
+        phases_stats = {}
+
+        # Pour chaque round unique
+        for round_name in matches_df["round"].unique():
+            if pd.isna(round_name):
+                continue
+
+            # Filtrer les matchs de cette phase
+            phase_matches = matches_df[matches_df["round"] == round_name]
+
+            total = len(phase_matches)
+            wins = int(phase_matches["won"].sum())
+            win_rate = wins / total if total > 0 else 0
+
+            # Classifier la phase
+            phase_category = self._classify_phase(round_name, league_type)
+
+            if phase_category not in phases_stats:
+                phases_stats[phase_category] = {
+                    "total_matches": 0,
+                    "wins": 0,
+                    "rounds": []
+                }
+
+            phases_stats[phase_category]["total_matches"] += total
+            phases_stats[phase_category]["wins"] += wins
+            phases_stats[phase_category]["rounds"].append({
+                "round_name": round_name,
+                "matches": total,
+                "wins": wins,
+                "win_rate": float(win_rate)
+            })
+
+        # Calculer win_rate global par phase
+        for phase, stats in phases_stats.items():
+            stats["win_rate"] = stats["wins"] / stats["total_matches"] if stats["total_matches"] > 0 else 0
+
+        return phases_stats
+
+    def _classify_phase(self, round_name: str, league_type: str) -> str:
+        """Classifie un round dans une catégorie de phase."""
+        round_lower = round_name.lower()
+
+        if league_type == "cup":
+            # Phases de coupe
+            if "group" in round_lower:
+                # Extraire le numéro du match de groupe
+                if "- 1" in round_name:
+                    return "group_match_1"
+                elif "- 2" in round_name:
+                    return "group_match_2"
+                elif "- 3" in round_name:
+                    return "group_match_3"
+                else:
+                    return "group_stage"
+            elif "round of 16" in round_lower or "1/8" in round_lower or "eighth" in round_lower:
+                return "round_of_16"
+            elif "quarter" in round_lower or "1/4" in round_lower:
+                return "quarter_finals"
+            elif "semi" in round_lower or "1/2" in round_lower:
+                return "semi_finals"
+            elif "final" in round_lower and "semi" not in round_lower:
+                return "final"
+            elif "3rd" in round_lower or "third" in round_lower:
+                return "third_place"
+            else:
+                return "knockout_other"
+        else:
+            # Phases de league
+            # Extraire le numéro de journée
+            import re
+            match = re.search(r'- (\d+)', round_name)
+            if match:
+                matchday = int(match.group(1))
+                if matchday == 1:
+                    return "matchday_1"
+                elif matchday <= 10:
+                    return "season_start"
+                elif matchday <= 28:
+                    return "season_middle"
+                else:
+                    return "season_end"
+            else:
+                return "regular_season"
+
     def analyze_penalty_patterns(
         self,
         events_df: pd.DataFrame
@@ -405,4 +507,84 @@ class EventsAnalyzer:
             "penalties_missed": len(penalties_missed),
             "penalties_conceded": len(penalties_conceded),
             "conversion_rate": float(conversion_rate),
+        }
+
+    def analyze_regular_time_wins(
+        self,
+        matches_df: pd.DataFrame,
+        events_df: pd.DataFrame,
+        competition_id: int = None
+    ) -> Dict[str, Any]:
+        """
+        Analyse les victoires obtenues en temps réglementaire (90 min) vs prolongations/penalties.
+
+        Détecte si les victoires viennent du score à 90 minutes ou des prolongations/penalties.
+        Insight clé : une équipe qui ne gagne jamais en temps réglementaire.
+
+        Args:
+            competition_id: Si fourni, filtre les matchs de cette compétition uniquement
+
+        Returns:
+            Dict avec wins_in_regular_time, wins_in_extra_time, regular_time_win_rate
+        """
+        if events_df.empty or matches_df.empty:
+            return {}
+
+        # Filtrer par compétition si demandé
+        if competition_id is not None:
+            matches_df = matches_df[matches_df["competition_id"] == competition_id]
+            if matches_df.empty:
+                return {}
+
+        total_wins = 0
+        wins_in_regular_time = 0
+        wins_in_extra_time = 0
+
+        for fixture_id in matches_df["fixture_id"].unique():
+            # Vérifier si c'est une victoire
+            match_result = matches_df[matches_df["fixture_id"] == fixture_id]["result"].values
+            if len(match_result) == 0 or match_result[0] != "W":
+                continue
+
+            total_wins += 1
+
+            # Récupérer tous les buts du match (avant 90 min)
+            match_events = events_df[
+                (events_df["fixture_id"] == fixture_id) &
+                (events_df["type"] == "Goal") &
+                (events_df["detail"].isin(["Normal Goal", "Penalty"])) &
+                (events_df["minute"] < 120)  # Inclure prolongations
+            ].sort_values("minute")
+
+            # Calculer le score à 90 minutes
+            score_us_at_90 = 0
+            score_them_at_90 = 0
+
+            for _, event in match_events.iterrows():
+                minute = event["minute"]
+
+                if minute < 90:
+                    if event["is_our_team"]:
+                        score_us_at_90 += 1
+                    else:
+                        score_them_at_90 += 1
+
+            # Déterminer si la victoire vient du temps réglementaire
+            if score_us_at_90 > score_them_at_90:
+                # Victoire acquise à 90 min (temps réglementaire)
+                wins_in_regular_time += 1
+            else:
+                # Victoire en prolongations ou penalties (nul à 90 min)
+                wins_in_extra_time += 1
+
+        if total_wins == 0:
+            return {}
+
+        regular_time_win_rate = wins_in_regular_time / total_wins if total_wins > 0 else 0
+
+        return {
+            "total_wins": total_wins,
+            "wins_in_regular_time": wins_in_regular_time,
+            "wins_in_extra_time": wins_in_extra_time,
+            "regular_time_win_rate": float(regular_time_win_rate),
         }
