@@ -53,6 +53,7 @@ class FeatureBuilderV2:
         # 1) Construire les DataFrames
         logger.info("Construction des DataFrames...")
 
+        # DataFrames pour forme generale (tous matchs)
         matches_a_df = self.df_builder.build_matches_dataframe(
             data["team_a_all_matches"],
             normalized_ids.team_a_id,
@@ -64,6 +65,22 @@ class FeatureBuilderV2:
             normalized_ids.team_b_id,
             normalized_ids.team_b_name
         )
+
+        # NOUVEAU: DataFrames pour matchs dans la league specifique
+        matches_a_league_df = self.df_builder.build_matches_dataframe(
+            data["team_a_league_matches"],
+            normalized_ids.team_a_id,
+            normalized_ids.team_a_name
+        )
+
+        matches_b_league_df = self.df_builder.build_matches_dataframe(
+            data["team_b_league_matches"],
+            normalized_ids.team_b_id,
+            normalized_ids.team_b_name
+        )
+
+        logger.info(f"Team A: {len(matches_a_df)} matchs (all), {len(matches_a_league_df)} matchs (league)")
+        logger.info(f"Team B: {len(matches_b_df)} matchs (all), {len(matches_b_league_df)} matchs (league)")
 
         stats_a_df = self.df_builder.build_stats_dataframe(
             data["stats_by_fixture"],
@@ -97,15 +114,22 @@ class FeatureBuilderV2:
             normalized_ids.team_b_id
         )
 
-        # 2) Analyses statistiques
+        # 2) Analyses statistiques (avec stats specifiques competition)
         logger.info("Analyses statistiques...")
-        statistical_features_a = self._build_statistical_features(matches_a_df, stats_a_df)
-        statistical_features_b = self._build_statistical_features(matches_b_df, stats_b_df)
+        league_id = normalized_ids.league_id
+        statistical_features_a = self._build_statistical_features(matches_a_df, stats_a_df, league_id, matches_a_league_df)
+        statistical_features_b = self._build_statistical_features(matches_b_df, stats_b_df, league_id, matches_b_league_df)
 
         # 3) Analyses events
         logger.info("Analyses events/timeline...")
         events_features_a = self._build_events_features(matches_a_df, events_a_df)
         events_features_b = self._build_events_features(matches_b_df, events_b_df)
+
+        # 3b) Analyses events specifiques a la competition
+        logger.info("Analyses events specifiques a la competition...")
+        league_type = normalized_ids.league_type
+        events_comp_a = self._build_events_features_for_competition(matches_a_league_df, events_a_df, league_id, league_type)
+        events_comp_b = self._build_events_features_for_competition(matches_b_league_df, events_b_df, league_id, league_type)
 
         # 4) Analyses joueurs
         logger.info("Analyses joueurs...")
@@ -142,11 +166,13 @@ class FeatureBuilderV2:
             "team_a": {
                 "statistical": statistical_features_a,
                 "events": events_features_a,
+                "events_competition": events_comp_a,  # Events specifiques a la competition
                 "players": player_features_a,
             },
             "team_b": {
                 "statistical": statistical_features_b,
                 "events": events_features_b,
+                "events_competition": events_comp_b,  # Events specifiques a la competition
                 "players": player_features_b,
             },
             "h2h": {
@@ -155,7 +181,7 @@ class FeatureBuilderV2:
             },
         }
 
-    def _build_statistical_features(self, matches_df, stats_df):
+    def _build_statistical_features(self, matches_df, stats_df, league_id=None, league_matches_df=None):
         """Construit les features statistiques pour une equipe."""
         if matches_df.empty:
             return {}
@@ -173,6 +199,12 @@ class FeatureBuilderV2:
             "goals_against_per_match": float(matches_df["goals_against"].mean()),
             "clean_sheet_rate": float(matches_df["clean_sheet"].mean()),
         }
+
+        # Stats specifiques a la competition si league_matches_df fourni
+        if league_matches_df is not None and not league_matches_df.empty:
+            features["competition_specific"] = self.statistical_analyzer.calculate_competition_specific_stats_direct(
+                league_matches_df, matches_df
+            )
 
         # Stats descriptives
         if not stats_df.empty:
@@ -217,6 +249,31 @@ class FeatureBuilderV2:
         # Penalties
         features["penalties"] = self.events_analyzer.analyze_penalty_patterns(
             events_df
+        )
+
+        # Regular time wins vs extra time (global)
+        features["regular_time_wins"] = self.events_analyzer.analyze_regular_time_wins(
+            matches_df, events_df
+        )
+
+        return features
+
+    def _build_events_features_for_competition(self, matches_df, events_df, competition_id, league_type="cup"):
+        """Construit les features events pour une equipe dans une competition specifique."""
+        if matches_df.empty or competition_id is None:
+            return {}
+
+        features = {}
+
+        # Regular time wins dans la competition specifique
+        if not events_df.empty:
+            features["regular_time_wins"] = self.events_analyzer.analyze_regular_time_wins(
+                matches_df, events_df, competition_id=competition_id
+            )
+
+        # NOUVEAU: Analyse par phase de compétition
+        features["by_phase"] = self.events_analyzer.analyze_by_competition_phase(
+            matches_df, league_type
         )
 
         return features

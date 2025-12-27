@@ -227,6 +227,10 @@ class MatchAnalysisService:
             team_b_stats = features["team_b"]["statistical"]
             h2h_stats = features["h2h"]
 
+            # Extraire les stats specifiques a la competition
+            team_a_comp_stats = team_a_stats.get("competition_specific", {})
+            team_b_comp_stats = team_b_stats.get("competition_specific", {})
+
             # Breakdown des insights
             by_type = {}
             by_confidence = {}
@@ -271,6 +275,7 @@ class MatchAnalysisService:
                         "goals_per_match": round(team_a_stats.get("goals_per_match", 0), 2),
                         "goals_against_per_match": round(team_a_stats.get("goals_against_per_match", 0), 2),
                         "clean_sheet_rate": round(team_a_stats.get("clean_sheet_rate", 0) * 100, 1),
+                        "competition_specific": self._format_competition_stats(team_a_comp_stats) if team_a_comp_stats.get("has_competition_data") else None,
                     },
                     "team_b": {
                         "total_matches": team_b_stats.get("total_matches", 0),
@@ -279,6 +284,7 @@ class MatchAnalysisService:
                         "goals_per_match": round(team_b_stats.get("goals_per_match", 0), 2),
                         "goals_against_per_match": round(team_b_stats.get("goals_against_per_match", 0), 2),
                         "clean_sheet_rate": round(team_b_stats.get("clean_sheet_rate", 0) * 100, 1),
+                        "competition_specific": self._format_competition_stats(team_b_comp_stats) if team_b_comp_stats.get("has_competition_data") else None,
                     },
                     "h2h": {
                         "total_matches": h2h_stats.get("total_matches", 0),
@@ -341,4 +347,24 @@ class MatchAnalysisService:
             "total_api_calls": self.data_collector.api_call_count,
             "service_name": "MatchAnalysisService",
             "version": "1.0.0",
+        }
+
+    def _format_competition_stats(self, comp_stats: dict) -> dict:
+        """
+        Formate les statistiques specifiques a la competition.
+
+        Args:
+            comp_stats: Statistiques competition retournees par calculate_competition_specific_stats
+
+        Returns:
+            Dict avec stats formatees
+        """
+        in_comp = comp_stats.get("in_competition", {})
+        return {
+            "total_matches": in_comp.get("total_matches", 0),
+            "wins": in_comp.get("wins", 0),
+            "win_rate": round(in_comp.get("win_rate", 0) * 100, 1),
+            "goals_per_match": round(in_comp.get("goals_per_match", 0), 2),
+            "goals_against_per_match": round(in_comp.get("goals_against_per_match", 0), 2),
+            "clean_sheet_rate": round(in_comp.get("clean_sheet_rate", 0) * 100, 1),
         }

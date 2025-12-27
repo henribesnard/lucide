@@ -40,10 +40,24 @@ class MatchSummaryGenerator:
         # Statistiques globales
         summary_parts.append("### 📊 Statistiques Globales")
         summary_parts.append("")
-        summary_parts.append(self._format_team_stats(team_a, stats.get("team_a", {})))
+        summary_parts.append(self._format_team_stats(team_a, stats.get("team_a", {}), "toutes compétitions"))
         summary_parts.append("")
-        summary_parts.append(self._format_team_stats(team_b, stats.get("team_b", {})))
+        summary_parts.append(self._format_team_stats(team_b, stats.get("team_b", {}), "toutes compétitions"))
         summary_parts.append("")
+
+        # Statistiques specifiques a la competition
+        team_a_comp_stats = stats.get("team_a", {}).get("competition_specific")
+        team_b_comp_stats = stats.get("team_b", {}).get("competition_specific")
+
+        if team_a_comp_stats or team_b_comp_stats:
+            summary_parts.append(f"### 📊 Statistiques dans {league}")
+            summary_parts.append("")
+            if team_a_comp_stats:
+                summary_parts.append(self._format_team_stats(team_a, team_a_comp_stats, f"{league} - toutes saisons"))
+                summary_parts.append("")
+            if team_b_comp_stats:
+                summary_parts.append(self._format_team_stats(team_b, team_b_comp_stats, f"{league} - toutes saisons"))
+                summary_parts.append("")
 
         # H2H
         h2h = stats.get("h2h", {})
@@ -160,7 +174,7 @@ class MatchSummaryGenerator:
 
         return "\n".join(summary_parts)
 
-    def _format_team_stats(self, team_name: str, stats: Dict[str, Any]) -> str:
+    def _format_team_stats(self, team_name: str, stats: Dict[str, Any], label: str = "") -> str:
         """Formate les statistiques d'une equipe."""
         matches = stats.get("total_matches", 0)
         wins = stats.get("wins", 0)
@@ -169,8 +183,13 @@ class MatchSummaryGenerator:
         goals_against = stats.get("goals_against_per_match", 0)
         clean_sheet_rate = stats.get("clean_sheet_rate", 0)
 
+        # Construire le label
+        matches_label = f"{matches} matchs analysés"
+        if label:
+            matches_label += f" - {label}"
+
         lines = [
-            f"**{team_name}** ({matches} matchs analysés)",
+            f"**{team_name}** ({matches_label})",
             f"- Taux de victoire : **{win_rate:.1f}%** ({wins} victoires)",
             f"- Moyenne de buts marqués : **{goals_per_match:.2f} buts/match**",
             f"- Moyenne de buts encaissés : **{goals_against:.2f} buts/match**",

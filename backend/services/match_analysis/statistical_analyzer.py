@@ -290,6 +290,133 @@ class StatisticalAnalyzer:
     def __init__(self):
         self.df_builder = DataFrameBuilder()
 
+    def calculate_competition_specific_stats(
+        self,
+        matches_df: pd.DataFrame,
+        competition_id: int
+    ) -> Dict[str, Any]:
+        """
+        Calcule des statistiques specifiques a une competition.
+
+        Compare les performances dans la competition donnee vs toutes competitions.
+
+        Args:
+            matches_df: DataFrame des matchs (avec competition_id)
+            competition_id: ID de la competition a analyser (ex: 6 pour CAN)
+
+        Returns:
+            Dict avec stats in_competition et stats global pour comparaison
+        """
+        if matches_df.empty:
+            return {}
+
+        # Filtrer matchs de la competition
+        comp_matches = matches_df[matches_df["competition_id"] == competition_id]
+
+        if comp_matches.empty:
+            return {
+                "has_competition_data": False,
+                "competition_id": competition_id,
+            }
+
+        # Stats dans la competition
+        in_comp_total = len(comp_matches)
+        in_comp_wins = comp_matches["won"].sum()
+        in_comp_draws = comp_matches["drew"].sum()
+        in_comp_losses = comp_matches["lost"].sum()
+        in_comp_goals_for = comp_matches["goals_for"].sum()
+        in_comp_goals_against = comp_matches["goals_against"].sum()
+        in_comp_clean_sheets = comp_matches["clean_sheet"].sum()
+
+        # Stats globales (toutes competitions)
+        global_total = len(matches_df)
+        global_wins = matches_df["won"].sum()
+        global_goals_for = matches_df["goals_for"].sum()
+        global_goals_against = matches_df["goals_against"].sum()
+        global_clean_sheets = matches_df["clean_sheet"].sum()
+
+        return {
+            "has_competition_data": True,
+            "competition_id": competition_id,
+            "in_competition": {
+                "total_matches": int(in_comp_total),
+                "wins": int(in_comp_wins),
+                "draws": int(in_comp_draws),
+                "losses": int(in_comp_losses),
+                "win_rate": float(in_comp_wins / in_comp_total) if in_comp_total > 0 else 0,
+                "goals_per_match": float(in_comp_goals_for / in_comp_total) if in_comp_total > 0 else 0,
+                "goals_against_per_match": float(in_comp_goals_against / in_comp_total) if in_comp_total > 0 else 0,
+                "clean_sheet_rate": float(in_comp_clean_sheets / in_comp_total) if in_comp_total > 0 else 0,
+            },
+            "global": {
+                "total_matches": int(global_total),
+                "wins": int(global_wins),
+                "win_rate": float(global_wins / global_total) if global_total > 0 else 0,
+                "goals_per_match": float(global_goals_for / global_total) if global_total > 0 else 0,
+                "goals_against_per_match": float(global_goals_against / global_total) if global_total > 0 else 0,
+                "clean_sheet_rate": float(global_clean_sheets / global_total) if global_total > 0 else 0,
+            },
+        }
+
+    def calculate_competition_specific_stats_direct(
+        self,
+        league_matches_df: pd.DataFrame,
+        all_matches_df: pd.DataFrame
+    ) -> Dict[str, Any]:
+        """
+        Calcule les statistiques specifiques a une competition en utilisant directement
+        le DataFrame des matchs de la ligue (au lieu de filtrer).
+
+        Args:
+            league_matches_df: DataFrame contenant UNIQUEMENT les matchs de la ligue (toutes saisons)
+            all_matches_df: DataFrame contenant tous les matchs (toutes competitions)
+
+        Returns:
+            Dict avec stats in_competition et stats global pour comparaison
+        """
+        if league_matches_df.empty:
+            return {
+                "has_competition_data": False,
+            }
+
+        # Stats dans la competition (utilise directement le DataFrame de ligue)
+        in_comp_total = len(league_matches_df)
+        in_comp_wins = league_matches_df["won"].sum()
+        in_comp_draws = league_matches_df["drew"].sum()
+        in_comp_losses = league_matches_df["lost"].sum()
+        in_comp_goals_for = league_matches_df["goals_for"].sum()
+        in_comp_goals_against = league_matches_df["goals_against"].sum()
+        in_comp_clean_sheets = league_matches_df["clean_sheet"].sum()
+
+        # Stats globales (toutes competitions)
+        global_total = len(all_matches_df)
+        global_wins = all_matches_df["won"].sum()
+        global_goals_for = all_matches_df["goals_for"].sum()
+        global_goals_against = all_matches_df["goals_against"].sum()
+        global_clean_sheets = all_matches_df["clean_sheet"].sum()
+
+        return {
+            "has_competition_data": True,
+            "in_competition": {
+                "total_matches": int(in_comp_total),
+                "wins": int(in_comp_wins),
+                "draws": int(in_comp_draws),
+                "losses": int(in_comp_losses),
+                "win_rate": float(in_comp_wins / in_comp_total) if in_comp_total > 0 else 0,
+                "goals_per_match": float(in_comp_goals_for / in_comp_total) if in_comp_total > 0 else 0,
+                "goals_against_per_match": float(in_comp_goals_against / in_comp_total) if in_comp_total > 0 else 0,
+                "clean_sheet_rate": float(in_comp_clean_sheets / in_comp_total) if in_comp_total > 0 else 0,
+            },
+            "global": {
+                "total_matches": int(global_total),
+                "wins": int(global_wins),
+                "win_rate": float(global_wins / global_total) if global_total > 0 else 0,
+                "goals_per_match": float(global_goals_for / global_total) if global_total > 0 else 0,
+                "goals_against_per_match": float(global_goals_against / global_total) if global_total > 0 else 0,
+                "clean_sheet_rate": float(global_clean_sheets / global_total) if global_total > 0 else 0,
+            },
+        }
+
     def calculate_descriptive_stats(
         self,
         stats_df: pd.DataFrame,
