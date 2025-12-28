@@ -349,7 +349,15 @@ class PatternGenerator:
         by_phase = events_comp.get("by_phase", {})
         logger.info(f"[{team_name}] Phases analysis: {list(by_phase.keys())}")
 
+        # Phases à exclure (trop spécifiques et potentiellement non pertinentes)
+        excluded_phases = {"group_match_1", "group_match_2", "group_match_3"}
+
         for phase, phase_stats in by_phase.items():
+            # Skip specific group match numbers (can be irrelevant to current match)
+            if phase in excluded_phases:
+                logger.debug(f"[{team_name}] Skipping phase insight for {phase} (too specific)")
+                continue
+
             total_matches = phase_stats.get("total_matches", 0)
             wins = phase_stats.get("wins", 0)
             win_rate = phase_stats.get("win_rate", 0)
@@ -510,18 +518,33 @@ class PatternGenerator:
             return insights
 
         team_a_wins = h2h.get("team_a_wins", 0)
+        draws = h2h.get("draws", 0)
+        team_a_losses = h2h.get("team_a_losses", 0)
         win_rate = team_a_wins / total if total > 0 else 0
 
+        # Only claim dominance if opponent has actual wins (not just draws)
         if win_rate == 0 and total >= 3:
-            insights.append({
-                "type": "h2h",
-                "team": "both",
-                "text": f"{team_a_name} n'a jamais battu {team_b_name} en H2H "
-                        f"(0V sur {total} matchs). Domination historique de {team_b_name}.",
-                "confidence": "high",
-                "category": "h2h_dominance",
-                "metric_value": 1.0,
-            })
+            if team_a_losses >= 3:  # Opponent has at least 3 wins
+                insights.append({
+                    "type": "h2h",
+                    "team": "both",
+                    "text": f"{team_a_name} n'a jamais battu {team_b_name} en H2H "
+                            f"(0V sur {total} matchs). Domination historique de {team_b_name}.",
+                    "confidence": "high",
+                    "category": "h2h_dominance",
+                    "metric_value": 1.0,
+                })
+            elif team_a_losses >= 2 and total >= 4:  # Opponent has at least 2 wins
+                insights.append({
+                    "type": "h2h",
+                    "team": "both",
+                    "text": f"{team_a_name} n'a jamais battu {team_b_name} en H2H "
+                            f"(0V - {draws}N - {team_a_losses}D). Desavantage historique.",
+                    "confidence": "medium",
+                    "category": "h2h_dominance",
+                    "metric_value": 0.8,
+                })
+            # If all draws, don't generate dominance insight (it's balanced)
         elif win_rate >= 0.75 and total >= 4:
             insights.append({
                 "type": "h2h",
