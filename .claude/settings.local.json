@@ -71,7 +71,15 @@
       "Bash(ls:*)",
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ZGIzNDYwYS1hNmI1LTRkY2UtYTJmNC1hMTIwNThhZmUwYjMiLCJleHAiOjE3NjY2ODY0ODF9.xsJaTcjd96KCsa_B_4TGB_rjOAOWwwcJgCasm-BTMfw\")",
       "Bash(docker logs:*)",
-      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ZGIzNDYwYS1hNmI1LTRkY2UtYTJmNC1hMTIwNThhZmUwYjMiLCJleHAiOjE3NjY2ODY3ODd9.6S7-LDddM44uIHf3_MnxboFKiO1mOcvTqIC-ANH3VJk\")"
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ZGIzNDYwYS1hNmI1LTRkY2UtYTJmNC1hMTIwNThhZmUwYjMiLCJleHAiOjE3NjY2ODY3ODd9.6S7-LDddM44uIHf3_MnxboFKiO1mOcvTqIC-ANH3VJk\")",
+      "Bash(tree:*)",
+      "Bash(find:*)",
+      "Bash(npm run build:*)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File test_api_simple.ps1)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File test_api_30_matches.ps1)",
+      "Bash(Select-String -Pattern \"BENIN|regular_time|competition_specific|pattern\" -Context 0,2)",
+      "Bash(Select-Object -Last 50)",
+      "Bash(Select-Object -Last 5)"
     ],
     "deny": [],
     "ask": []

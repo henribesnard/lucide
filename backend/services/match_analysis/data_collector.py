@@ -346,10 +346,13 @@ class DataCollector:
             normalized.team_b_id, normalized.league_id
         )
 
-        # H2H
+        # H2H (global)
         h2h_fixtures = await self._get_h2h_fixtures(
             normalized.team_a_id, normalized.team_b_id
         )
+
+        # H2H dans la ligue specifique
+        h2h_league_fixtures = self._filter_h2h_by_league(h2h_fixtures, normalized.league_id)
 
         # Combiner tous les fixture IDs pour collecte detaillee
         # Inclut: matchs generaux + matchs league + h2h
@@ -427,6 +430,7 @@ class DataCollector:
             "team_b_league_matches": team_b_fixtures_league,
             # H2H et details
             "h2h_matches": h2h_fixtures,
+            "h2h_league_matches": h2h_league_fixtures,  # H2H dans la ligue specifique
             "events_by_fixture": events_by_fixture,
             "stats_by_fixture": stats_by_fixture,
             "lineups_by_fixture": lineups_by_fixture,
@@ -523,6 +527,28 @@ class DataCollector:
         except Exception as e:
             logger.error(f"Erreur get_h2h_fixtures: {e}")
             return []
+
+    def _filter_h2h_by_league(
+        self, h2h_fixtures: List[Dict[str, Any]], league_id: int
+    ) -> List[Dict[str, Any]]:
+        """
+        Filtre les matchs H2H pour ne garder que ceux d'une ligue specifique.
+
+        Args:
+            h2h_fixtures: Liste des matchs H2H (toutes competitions)
+            league_id: ID de la ligue a filtrer
+
+        Returns:
+            Liste des matchs H2H uniquement dans cette ligue
+        """
+        league_h2h = []
+        for match in h2h_fixtures:
+            match_league_id = match.get("league", {}).get("id")
+            if match_league_id == league_id:
+                league_h2h.append(match)
+
+        logger.info(f"H2H dans league {league_id}: {len(league_h2h)} matchs sur {len(h2h_fixtures)} total")
+        return league_h2h
 
     async def _collect_match_details(
         self,

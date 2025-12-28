@@ -4,8 +4,7 @@ Date: 2025-12-28T20:00:00+00:00
 Round: Group Stage - 2
 Venue: Stade de Marrakech
 Status: NS
-Fixture ID: 1347261
-Generated: 2025-12-27T09:21:05.992320
+Generated: 2025-12-28T08:06:33.661646
 ---
 
 # Analyse Match : Ivory Coast vs Cameroon
@@ -27,22 +26,27 @@ Generated: 2025-12-27T09:21:05.992320
 
 ### 📊 Statistiques dans Africa Cup of Nations
 
-**Ivory Coast** (8 matchs analysés - Africa Cup of Nations - toutes saisons)
-- Taux de victoire : **62.5%** (5 victoires)
-- Moyenne de buts marqués : **1.12 buts/match**
-- Moyenne de buts encaissés : **1.00 buts/match**
-- Clean sheets : **37.5%** des matchs
+**Ivory Coast** (32 matchs analysés - Africa Cup of Nations - toutes saisons)
+- Taux de victoire : **50.0%** (16 victoires)
+- Moyenne de buts marqués : **1.44 buts/match**
+- Moyenne de buts encaissés : **0.84 buts/match**
+- Clean sheets : **40.6%** des matchs
 
-**Cameroon** (5 matchs analysés - Africa Cup of Nations - toutes saisons)
-- Taux de victoire : **40.0%** (2 victoires)
-- Moyenne de buts marqués : **1.20 buts/match**
-- Moyenne de buts encaissés : **1.60 buts/match**
-- Clean sheets : **20.0%** des matchs
+**Cameroon** (31 matchs analysés - Africa Cup of Nations - toutes saisons)
+- Taux de victoire : **41.9%** (13 victoires)
+- Moyenne de buts marqués : **1.26 buts/match**
+- Moyenne de buts encaissés : **0.87 buts/match**
+- Clean sheets : **41.9%** des matchs
 
-**Historique H2H**
+**Historique H2H (toutes compétitions)**
 - 4 confrontations récentes
-- Victoires Ivory Coast : **3**
+- Bilan Ivory Coast : **3V - 0N - 1D**
 - Ivory Coast domine les confrontations directes
+
+**H2H dans Africa Cup of Nations**
+- 1 confrontations à Africa Cup of Nations
+- Bilan Ivory Coast : **1V - 0N - 0D**
+- Ivory Coast domine historiquement à Africa Cup of Nations
 
 ---
 
@@ -54,29 +58,21 @@ Generated: 2025-12-27T09:21:05.992320
    - Ivory Coast domine le H2H: 3/4 victoires (75%). Avantage psychologique.
    - Un ascendant psychologique important
 
-2. **Phase Weakness**
-   - Ivory Coast n'a JAMAIS gagne en 2ème match de groupe (0/6). Bloque a cette phase.
-   - Facteur à prendre en compte
-
-3. **Premier but décisif**
-   - Ivory Coast gagne 93% quand marque en premier (13/14). Demarrage crucial.
+2. **Premier but décisif**
+   - Ivory Coast gagne 92% quand marque en premier (12/13). Demarrage crucial.
    - Le démarrage est crucial pour cette équipe
 
-4. **Premier but décisif**
+3. **Premier but décisif**
    - Cameroon gagne 81% quand marque en premier (13/16). Demarrage crucial.
    - Le démarrage est crucial pour cette équipe
 
 #### 📈 Confiance MOYENNE
 
-5. **Phase Weakness**
-   - Cameroon faible en 3ème match de groupe: 17% victoires (1/6). Phase critique.
-   - Facteur à prendre en compte
-
-6. **Solidité défensive**
+4. **Solidité défensive**
    - Ivory Coast garde sa cage inviolee dans 57% de ses matchs. Defense solide.
    - Une défense particulièrement hermétique
 
-7. **Impact de la discipline**
+5. **Impact de la discipline**
    - Cameroon ne gagne que 0% avec carton avant 30 min, contre 57% sans. Discipline critique.
    - La discipline tactique est déterminante
 
@@ -85,7 +81,6 @@ Generated: 2025-12-27T09:21:05.992320
 ### 💡 Tendances et Patterns
 
 **Par catégorie d'insights :**
-- Phase Weakness : 2 insights
 - Premier but : 2 insights
 - Domination H2H : 1 insight
 - Défense : 1 insight
@@ -93,7 +88,6 @@ Generated: 2025-12-27T09:21:05.992320
 
 **Par type d'analyse :**
 - Événements (timeline) : 3 insights
-- Phase Performance : 2 insights
 - Historique H2H : 1 insight
 - Statistiques globales : 1 insight
 
@@ -102,10 +96,10 @@ Generated: 2025-12-27T09:21:05.992320
 ### 🔍 Analyse Technique
 
 **Données analysées :**
-- **155 appels API** vers API-Football v3
+- **168 appels API** vers API-Football v3
 - **60 matchs** analysés (30 + 30)
 - **115 matchs** avec données complètes (événements, statistiques, compositions)
-- **Temps de traitement** : 24.15 secondes
+- **Temps de traitement** : 23.99 secondes
 
 **Période d'analyse :**
 - Derniers 30 matchs par équipe (toutes compétitions)
@@ -120,4 +114,4 @@ Le **Ivory Coast** part favori avec une forme solide (60% de victoires). Le **Ca
 
 ---
 
-*Analyse générée par le système étendu avec algorithme complet (pandas/scipy/numpy) - 7 insights détectés sur 39 patterns possibles*
+*Analyse générée par le système étendu avec algorithme complet (pandas/scipy/numpy) - 5 insights détectés sur 39 patterns possibles*

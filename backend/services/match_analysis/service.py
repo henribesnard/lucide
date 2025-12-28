@@ -226,6 +226,7 @@ class MatchAnalysisService:
             team_a_stats = features["team_a"]["statistical"]
             team_b_stats = features["team_b"]["statistical"]
             h2h_stats = features["h2h"]
+            h2h_league_stats = features["h2h_league"]
 
             # Extraire les stats specifiques a la competition
             team_a_comp_stats = team_a_stats.get("competition_specific", {})
@@ -289,6 +290,14 @@ class MatchAnalysisService:
                     "h2h": {
                         "total_matches": h2h_stats.get("total_matches", 0),
                         "team_a_wins": h2h_stats.get("team_a_wins", 0),
+                        "draws": h2h_stats.get("draws", 0),
+                        "team_a_losses": h2h_stats.get("team_a_losses", 0),
+                    },
+                    "h2h_league": {
+                        "total_matches": h2h_league_stats.get("total_matches", 0),
+                        "team_a_wins": h2h_league_stats.get("team_a_wins", 0),
+                        "draws": h2h_league_stats.get("draws", 0),
+                        "team_a_losses": h2h_league_stats.get("team_a_losses", 0),
                     },
                 },
                 "insights": {

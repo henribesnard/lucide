@@ -4,8 +4,7 @@ Date: 2025-12-28T15:00:00+00:00
 Round: Group Stage - 2
 Venue: Stade Mohamed V
 Status: NS
-Fixture ID: 1347260
-Generated: 2025-12-27T09:20:13.577895
+Generated: 2025-12-28T08:03:30.487636
 ---
 
 # Analyse Match : Equatorial Guinea vs Sudan
@@ -27,22 +26,27 @@ Generated: 2025-12-27T09:20:13.577895
 
 ### 📊 Statistiques dans Africa Cup of Nations
 
-**Equatorial Guinea** (5 matchs analysés - Africa Cup of Nations - toutes saisons)
-- Taux de victoire : **40.0%** (2 victoires)
-- Moyenne de buts marqués : **2.00 buts/match**
-- Moyenne de buts encaissés : **1.20 buts/match**
-- Clean sheets : **20.0%** des matchs
+**Equatorial Guinea** (22 matchs analysés - Africa Cup of Nations - toutes saisons)
+- Taux de victoire : **36.4%** (8 victoires)
+- Moyenne de buts marqués : **1.05 buts/match**
+- Moyenne de buts encaissés : **1.00 buts/match**
+- Clean sheets : **36.4%** des matchs
 
-**Sudan** (1 matchs analysés - Africa Cup of Nations - toutes saisons)
-- Taux de victoire : **0.0%** (0 victoires)
-- Moyenne de buts marqués : **0.00 buts/match**
-- Moyenne de buts encaissés : **3.00 buts/match**
-- Clean sheets : **0.0%** des matchs
+**Sudan** (10 matchs analysés - Africa Cup of Nations - toutes saisons)
+- Taux de victoire : **10.0%** (1 victoires)
+- Moyenne de buts marqués : **0.60 buts/match**
+- Moyenne de buts encaissés : **2.00 buts/match**
+- Clean sheets : **10.0%** des matchs
 
-**Historique H2H**
+**Historique H2H (toutes compétitions)**
 - 2 confrontations récentes
-- Victoires Equatorial Guinea : **2**
+- Bilan Equatorial Guinea : **2V - 0N - 0D**
 - Equatorial Guinea domine les confrontations directes
+
+**H2H dans Africa Cup of Nations**
+- 2 confrontations à Africa Cup of Nations
+- Bilan Equatorial Guinea : **2V - 0N - 0D**
+- Equatorial Guinea domine historiquement à Africa Cup of Nations
 
 ---
 
@@ -50,21 +54,17 @@ Generated: 2025-12-27T09:20:13.577895
 
 #### ⚠️ Confiance ÉLEVÉE
 
-1. **Phase Weakness**
-   - Equatorial Guinea n'a JAMAIS gagne en 1er match de groupe (0/4). Bloque a cette phase.
-   - Facteur à prendre en compte
-
-2. **Phase Dominance**
-   - Equatorial Guinea domine en 3ème match de groupe: 100% victoires (4/4). Phase forte.
-   - Facteur à prendre en compte
+1. **Facteur tactique**
+   - Pour Equatorial Guinea, shots_on_goal correle fortement avec victoires (r=0.99, p<0.05). Facteur cle.
+   - Un indicateur clé de performance
 
 #### 📈 Confiance MOYENNE
 
-3. **Phase Weakness**
+2. **Phase Weakness**
    - Equatorial Guinea faible en phase de groupes: 25% victoires (1/4). Phase critique.
    - Facteur à prendre en compte
 
-4. **Phase Weakness**
+3. **Phase Weakness**
    - Sudan faible en phase de groupes: 25% victoires (1/4). Phase critique.
    - Facteur à prendre en compte
 
@@ -73,21 +73,22 @@ Generated: 2025-12-27T09:20:13.577895
 ### 💡 Tendances et Patterns
 
 **Par catégorie d'insights :**
-- Phase Weakness : 3 insights
-- Phase Dominance : 1 insight
+- Phase Weakness : 2 insights
+- Facteur clé : 1 insight
 
 **Par type d'analyse :**
-- Phase Performance : 4 insights
+- Phase Performance : 2 insights
+- Corrélations statistiques : 1 insight
 
 ---
 
 ### 🔍 Analyse Technique
 
 **Données analysées :**
-- **114 appels API** vers API-Football v3
+- **129 appels API** vers API-Football v3
 - **60 matchs** analysés (30 + 30)
 - **87 matchs** avec données complètes (événements, statistiques, compositions)
-- **Temps de traitement** : 17.72 secondes
+- **Temps de traitement** : 18.51 secondes
 
 **Période d'analyse :**
 - Derniers 30 matchs par équipe (toutes compétitions)
@@ -102,4 +103,4 @@ Match équilibré entre **Equatorial Guinea** (31.0% de victoires) et **Sudan** 
 
 ---
 
-*Analyse générée par le système étendu avec algorithme complet (pandas/scipy/numpy) - 4 insights détectés sur 39 patterns possibles*
+*Analyse générée par le système étendu avec algorithme complet (pandas/scipy/numpy) - 3 insights détectés sur 39 patterns possibles*

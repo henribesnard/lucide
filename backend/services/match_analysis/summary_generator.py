@@ -59,21 +59,44 @@ class MatchSummaryGenerator:
                 summary_parts.append(self._format_team_stats(team_b, team_b_comp_stats, f"{league} - toutes saisons"))
                 summary_parts.append("")
 
-        # H2H
+        # H2H global
         h2h = stats.get("h2h", {})
         if h2h.get("total_matches", 0) > 0:
-            summary_parts.append("**Historique H2H**")
-            summary_parts.append(f"- {h2h.get('total_matches', 0)} confrontations récentes")
-            summary_parts.append(f"- Victoires {team_a} : **{h2h.get('team_a_wins', 0)}**")
-
             team_a_wins = h2h.get('team_a_wins', 0)
+            draws = h2h.get('draws', 0)
+            team_a_losses = h2h.get('team_a_losses', 0)
             total_h2h = h2h.get('total_matches', 0)
-            if team_a_wins > total_h2h / 2:
+
+            summary_parts.append("**Historique H2H (toutes compétitions)**")
+            summary_parts.append(f"- {total_h2h} confrontations récentes")
+            summary_parts.append(f"- Bilan {team_a} : **{team_a_wins}V - {draws}N - {team_a_losses}D**")
+
+            if team_a_wins > team_a_losses:
                 summary_parts.append(f"- {team_a} domine les confrontations directes")
-            elif team_a_wins < total_h2h / 2:
+            elif team_a_wins < team_a_losses:
                 summary_parts.append(f"- {team_b} domine les confrontations directes")
             else:
                 summary_parts.append("- Équilibre dans les confrontations directes")
+            summary_parts.append("")
+
+        # H2H dans la ligue
+        h2h_league = stats.get("h2h_league", {})
+        if h2h_league.get("total_matches", 0) > 0:
+            team_a_wins_league = h2h_league.get('team_a_wins', 0)
+            draws_league = h2h_league.get('draws', 0)
+            team_a_losses_league = h2h_league.get('team_a_losses', 0)
+            total_h2h_league = h2h_league.get('total_matches', 0)
+
+            summary_parts.append(f"**H2H dans {league}**")
+            summary_parts.append(f"- {total_h2h_league} confrontations à {league}")
+            summary_parts.append(f"- Bilan {team_a} : **{team_a_wins_league}V - {draws_league}N - {team_a_losses_league}D**")
+
+            if team_a_wins_league > team_a_losses_league:
+                summary_parts.append(f"- {team_a} domine historiquement à {league}")
+            elif team_a_wins_league < team_a_losses_league:
+                summary_parts.append(f"- {team_b} domine historiquement à {league}")
+            else:
+                summary_parts.append(f"- Équilibre parfait à {league}")
             summary_parts.append("")
 
         summary_parts.append("---")

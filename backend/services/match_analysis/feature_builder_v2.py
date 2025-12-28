@@ -149,6 +149,14 @@ class FeatureBuilderV2:
             normalized_ids.team_a_name
         )
 
+        # 5b) H2H dans la ligue specifique
+        h2h_league_matches_df = self.df_builder.build_matches_dataframe(
+            data["h2h_league_matches"],
+            normalized_ids.team_a_id,
+            normalized_ids.team_a_name
+        )
+
+        logger.info(f"H2H: {len(h2h_matches_df)} matchs globaux, {len(h2h_league_matches_df)} matchs dans la ligue")
         logger.info("Construction features terminee")
 
         return {
@@ -162,6 +170,7 @@ class FeatureBuilderV2:
                 "lineups_a": lineups_a_df,
                 "lineups_b": lineups_b_df,
                 "h2h": h2h_matches_df,
+                "h2h_league": h2h_league_matches_df,
             },
             "team_a": {
                 "statistical": statistical_features_a,
@@ -178,6 +187,14 @@ class FeatureBuilderV2:
             "h2h": {
                 "total_matches": len(h2h_matches_df),
                 "team_a_wins": int(h2h_matches_df["won"].sum()) if not h2h_matches_df.empty else 0,
+                "draws": int(h2h_matches_df["drew"].sum()) if not h2h_matches_df.empty else 0,
+                "team_a_losses": int(h2h_matches_df["lost"].sum()) if not h2h_matches_df.empty else 0,
+            },
+            "h2h_league": {
+                "total_matches": len(h2h_league_matches_df),
+                "team_a_wins": int(h2h_league_matches_df["won"].sum()) if not h2h_league_matches_df.empty else 0,
+                "draws": int(h2h_league_matches_df["drew"].sum()) if not h2h_league_matches_df.empty else 0,
+                "team_a_losses": int(h2h_league_matches_df["lost"].sum()) if not h2h_league_matches_df.empty else 0,
             },
         }
 
