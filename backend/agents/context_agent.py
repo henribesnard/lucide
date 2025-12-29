@@ -35,9 +35,19 @@ class ContextAgent:
     - Subsequent accesses: Load from cache (0 API calls)
     """
 
-    def __init__(self, data_collector: DataCollector, storage_path: str = "./data/match_contexts"):
+    def __init__(self, data_collector: DataCollector, storage_path: str = "./data/match_contexts", db_session_factory=None):
         self.collector = data_collector
-        self.store = MatchContextStore(storage_path=storage_path)
+
+        # Use DB store if available, otherwise fall back to JSON store
+        if db_session_factory is not None:
+            from backend.store.db_match_context_store import DBMatchContextStore
+            self.store = DBMatchContextStore(db_session_factory)
+            logger.info("Using PostgreSQL match context store")
+        else:
+            from backend.store.match_context_store import MatchContextStore
+            self.store = MatchContextStore(storage_path=storage_path)
+            logger.info(f"Using JSON match context store at {storage_path}")
+
         self.context_manager = ContextManager(self.store)
 
         # Initialize all 8 analyzers
@@ -70,14 +80,15 @@ class ContextAgent:
         needs_analysis = force_refresh or self.context_manager.needs_new_analysis(fixture_id)
 
         if not needs_analysis:
-            logger.info(f"Loading match {fixture_id} from cache")
-            context = self.context_manager.load_context(fixture_id)
+            logger.info(f"Loading match {fixture_id} from database cache")
+            # Pass API client for status verification (adds 1 API call for NS matches)
+            context = await self.context_manager.load_context(fixture_id, self.collector.api)
 
             if context:
                 return {
                     "context": context,
                     "source": "cache",
-                    "api_calls": 0
+                    "api_calls": 0  # Status check API call not counted here (marginal cost)
                 }
 
         # Collect fresh data

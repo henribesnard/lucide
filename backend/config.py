@@ -52,6 +52,10 @@ class Settings(BaseSettings):
     ENABLE_SMART_SKIP_ANALYSIS: bool = False
     ENABLE_CAUSAL_AI: bool = True
 
+    # Match analysis storage
+    USE_DB_MATCH_STORE: bool = True  # True = PostgreSQL, False = JSON (legacy)
+    MATCH_STATUS_CHECK_FOR_NS: bool = True  # Vérifier statut actuel pour matchs NS
+
     # CORS - comma-separated list of allowed origins
     CORS_ORIGINS: str = "http://localhost,http://localhost:3000,http://localhost:3001,http://localhost:3010,http://localhost:8000,http://localhost:8001"
     # Optional regex to allow dynamic origins (useful for localhost dev ports)

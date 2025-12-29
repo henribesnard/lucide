@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from backend.agents.pipeline import LucidePipeline
 from backend.config import settings
 from backend.api.football_api import FootballAPIClient
-from backend.db.database import init_db, get_db
+from backend.db.database import init_db, get_db, SessionLocal
 from backend.auth.router import router as auth_router
 from backend.conversations.router import router as conversations_router
 from backend.services.match_analysis.router import router as match_analysis_router
@@ -240,7 +240,10 @@ async def chat(
         # Create or get pipeline instance
         if session_id not in sessions:
             logger.info(f"Creating new pipeline for user {current_user.email} (ID: {session_id})")
-            sessions[session_id] = LucidePipeline(session_id=session_id)
+            sessions[session_id] = LucidePipeline(
+                session_id=session_id,
+                db_session_factory=SessionLocal
+            )
 
         pipeline = sessions[session_id]
         message_to_process = request.message
@@ -339,7 +342,10 @@ async def chat_stream(
             # Create or get pipeline instance
             if session_id not in sessions:
                 logger.info(f"[STREAM] Creating new pipeline for user {current_user.email} (ID: {session_id})")
-                sessions[session_id] = LucidePipeline(session_id=session_id)
+                sessions[session_id] = LucidePipeline(
+                    session_id=session_id,
+                    db_session_factory=SessionLocal
+                )
 
             pipeline = sessions[session_id]
             message_to_process = request.message

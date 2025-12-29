@@ -32,6 +32,7 @@ class LucidePipeline:
         session_id: str | None = None,
         storage_path: str = "./data/match_contexts",
         user_id: str | None = None,
+        db_session_factory: Optional[Callable] = None,
     ):
         self.session_id = session_id
         self.user_id = user_id
@@ -98,7 +99,18 @@ class LucidePipeline:
 
         # Initialize context management components
         self.data_collector = DataCollector(self.api_client)
-        self.context_agent = ContextAgent(self.data_collector, storage_path=storage_path)
+
+        # Use DB-backed store if configured, otherwise fall back to JSON
+        if settings.USE_DB_MATCH_STORE and db_session_factory is not None:
+            self.context_agent = ContextAgent(
+                self.data_collector,
+                storage_path=storage_path,
+                db_session_factory=db_session_factory
+            )
+            logger.info("LucidePipeline using PostgreSQL match context store")
+        else:
+            self.context_agent = ContextAgent(self.data_collector, storage_path=storage_path)
+            logger.info(f"LucidePipeline using JSON match context store at {storage_path}")
 
         # Initialize agents
         self.intent_agent = IntentAgent(llm_for_intent)

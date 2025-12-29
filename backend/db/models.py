@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Boolean, Column, DateTime, String, Text, ForeignKey, Integer, Enum
+from sqlalchemy import Boolean, Column, DateTime, String, Text, ForeignKey, Integer, Enum, Index, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import enum
@@ -105,3 +105,65 @@ class Message(Base):
 
     def __repr__(self):
         return f"<Message {self.message_id} - {self.role}>"
+
+
+class MatchAnalysis(Base):
+    __tablename__ = "match_analyses"
+
+    # Clé primaire
+    analysis_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Identification du match
+    fixture_id = Column(Integer, unique=True, nullable=False, index=True)
+
+    # Informations du match (pour requêtes rapides sans JOIN)
+    home_team = Column(String(255), nullable=False)
+    away_team = Column(String(255), nullable=False)
+    league = Column(String(255), nullable=False)
+    season = Column(Integer, nullable=False)
+    match_date = Column(DateTime, nullable=False)
+
+    # Statut actuel (pour détecter les changements)
+    match_status = Column(String(10), nullable=False)  # NS, FT, 1H, etc.
+
+    # Analyses (JSON)
+    # Stocke les 8 types : {"1x2": {...}, "goals": {...}, ...}
+    analyses_data = Column(JSON, nullable=False)
+
+    # Métadonnées
+    api_calls_count = Column(Integer, default=0)
+    version = Column(String(10), default="2.0")
+
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    last_accessed = Column(DateTime, nullable=True)
+    access_count = Column(Integer, default=0)
+
+    # Index composé pour recherches fréquentes
+    __table_args__ = (
+        Index('idx_match_status_date', 'match_status', 'match_date'),
+        Index('idx_fixture_id', 'fixture_id'),
+        Index('idx_match_date', 'match_date'),
+    )
+
+    def __repr__(self):
+        return f"<MatchAnalysis {self.fixture_id} - {self.home_team} vs {self.away_team}>"
+
+
+class MatchAnalysisAccess(Base):
+    __tablename__ = "match_analysis_accesses"
+
+    access_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    analysis_id = Column(UUID(as_uuid=True), ForeignKey("match_analyses.analysis_id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
+    conversation_id = Column(UUID(as_uuid=True), ForeignKey("conversations.conversation_id", ondelete="SET NULL"), nullable=True)
+    accessed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    match_analysis = relationship("MatchAnalysis")
+    user = relationship("User")
+    conversation = relationship("Conversation")
+
+    def __repr__(self):
+        return f"<MatchAnalysisAccess {self.access_id} - {self.accessed_at}>"

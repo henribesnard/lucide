@@ -47,26 +47,60 @@ class ContextManager:
 
         return not exists
 
-    def load_context(self, fixture_id: int) -> Optional[MatchContext]:
+    async def load_context(self, fixture_id: int, api_client=None) -> Optional[MatchContext]:
         """
-        Load match context from store
+        Load match context from store with status validation
+
+        For matches with status "NS" (Not Started), verifies the current status
+        via API call. If the status has changed (match started or finished),
+        the cached analysis is invalidated and deleted.
 
         Args:
             fixture_id: ID of the fixture
+            api_client: Optional API client for status verification
 
         Returns:
-            MatchContext if found, None otherwise
+            MatchContext if found and valid, None if not found or invalidated
         """
         context = self.store.get_context(fixture_id)
 
-        if context:
-            self.current_match_context = context
-            logger.info(
-                f"Context loaded: {context.home_team} vs {context.away_team} "
-                f"(accessed {context.metadata.access_count} times)"
-            )
-        else:
+        if not context:
             logger.warning(f"No context found for fixture {fixture_id}")
+            return None
+
+        # Vérifier si le statut a changé depuis la création (pour matchs NS uniquement)
+        if api_client and context.status == "NS":
+            logger.info(f"Verifying status for NS match {fixture_id}")
+
+            try:
+                # Récupérer le statut actuel (1 API call léger)
+                fixtures = await api_client.get_fixtures(fixture_id=fixture_id)
+
+                if fixtures and len(fixtures) > 0:
+                    current_status = fixtures[0].get("fixture", {}).get("status", {}).get("short", "NS")
+
+                    # Si le statut a changé de NS vers autre chose
+                    if current_status != "NS":
+                        logger.warning(
+                            f"Match {fixture_id} status changed: NS -> {current_status}. "
+                            f"Invalidating cache."
+                        )
+                        # Supprimer l'analyse obsolète
+                        self.store.delete_context(fixture_id)
+                        return None
+
+                    logger.info(f"Match {fixture_id} still NS, using cached analysis")
+
+            except Exception as e:
+                logger.error(f"Error checking status for {fixture_id}: {e}")
+                # En cas d'erreur, on retourne le cache plutôt que de tout casser
+
+        # Contexte valide
+        self.current_match_context = context
+        logger.info(
+            f"Context loaded: {context.home_team} vs {context.away_team} "
+            f"(accessed {context.metadata.access_count} times)"
+        )
 
         return context
 
