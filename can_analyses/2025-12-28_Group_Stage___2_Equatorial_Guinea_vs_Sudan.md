@@ -4,7 +4,7 @@ Date: 2025-12-28T15:00:00+00:00
 Round: Group Stage - 2
 Venue: Stade Mohamed V
 Status: NS
-Generated: 2025-12-28T08:03:30.487636
+Generated: 2025-12-28T12:21:31.881681
 ---
 
 # Analyse Match : Equatorial Guinea vs Sudan
@@ -52,43 +52,23 @@ Generated: 2025-12-28T08:03:30.487636
 
 ### 🎯 Insights Clés
 
-#### ⚠️ Confiance ÉLEVÉE
-
-1. **Facteur tactique**
-   - Pour Equatorial Guinea, shots_on_goal correle fortement avec victoires (r=0.99, p<0.05). Facteur cle.
-   - Un indicateur clé de performance
-
-#### 📈 Confiance MOYENNE
-
-2. **Phase Weakness**
-   - Equatorial Guinea faible en phase de groupes: 25% victoires (1/4). Phase critique.
-   - Facteur à prendre en compte
-
-3. **Phase Weakness**
-   - Sudan faible en phase de groupes: 25% victoires (1/4). Phase critique.
-   - Facteur à prendre en compte
-
 ---
 
 ### 💡 Tendances et Patterns
 
 **Par catégorie d'insights :**
-- Phase Weakness : 2 insights
-- Facteur clé : 1 insight
 
 **Par type d'analyse :**
-- Phase Performance : 2 insights
-- Corrélations statistiques : 1 insight
 
 ---
 
 ### 🔍 Analyse Technique
 
 **Données analysées :**
-- **129 appels API** vers API-Football v3
+- **142 appels API** vers API-Football v3
 - **60 matchs** analysés (30 + 30)
 - **87 matchs** avec données complètes (événements, statistiques, compositions)
-- **Temps de traitement** : 18.51 secondes
+- **Temps de traitement** : 17.56 secondes
 
 **Période d'analyse :**
 - Derniers 30 matchs par équipe (toutes compétitions)
@@ -99,8 +79,8 @@ Generated: 2025-12-28T08:03:30.487636
 
 ### ✅ Conclusion
 
-Match équilibré entre **Equatorial Guinea** (31.0% de victoires) et **Sudan** (21.4% de victoires). Les deux équipes affichent des statistiques comparables.
+Match équilibré entre **Equatorial Guinea** (31.0%) et **Sudan** (21.4%), avec un léger avantage pour **Equatorial Guinea**.
 
 ---
 
-*Analyse générée par le système étendu avec algorithme complet (pandas/scipy/numpy) - 3 insights détectés sur 39 patterns possibles*
+*Analyse générée par le système étendu avec algorithme complet (pandas/scipy/numpy) - 0 insights détectés sur 39 patterns possibles*

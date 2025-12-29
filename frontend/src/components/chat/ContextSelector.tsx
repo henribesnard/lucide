@@ -135,7 +135,7 @@ export function ContextSelector<T>({
 
             {/* Dropdown with animation */}
             {isOpen && !disabled && (
-                <div className="absolute top-full left-0 mt-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200 origin-top-left">
+                <div className="absolute bottom-full left-0 mb-2 sm:bottom-auto sm:top-full sm:mb-0 sm:mt-2 z-50 animate-in fade-in slide-in-from-bottom-2 sm:slide-in-from-top-2 duration-200 origin-bottom-left sm:origin-top-left">
                     {children(() => setIsOpen(false))}
                 </div>
             )}

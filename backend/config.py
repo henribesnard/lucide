@@ -1,16 +1,18 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Literal
 from dotenv import load_dotenv
+from pathlib import Path
 
-# Force reload .env to ensure fresh values
-load_dotenv(override=True)
+# Load .env from the repo root no matter where the process is started.
+_ENV_PATH = Path(__file__).resolve().parents[1] / ".env"
+load_dotenv(dotenv_path=_ENV_PATH, override=True)
 
 
 class Settings(BaseSettings):
     """Configuration de l'application LUCIDE."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(_ENV_PATH),
         case_sensitive=True,
         extra="allow",
     )
@@ -52,6 +54,8 @@ class Settings(BaseSettings):
 
     # CORS - comma-separated list of allowed origins
     CORS_ORIGINS: str = "http://localhost,http://localhost:3000,http://localhost:3001,http://localhost:3010,http://localhost:8000,http://localhost:8001"
+    # Optional regex to allow dynamic origins (useful for localhost dev ports)
+    CORS_ORIGIN_REGEX: str = ""
 
 
 settings = Settings()

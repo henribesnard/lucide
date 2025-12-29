@@ -91,6 +91,9 @@ class PatternGenerator:
             team_b_name
         ))
 
+        # 8) Dedupliquer les insights redondants (presents pour les deux equipes avec valeurs similaires)
+        insights = self._deduplicate_redundant_insights(insights)
+
         # Trier par impact/importance
         insights.sort(key=lambda x: self._calculate_importance(x), reverse=True)
 
@@ -202,51 +205,63 @@ class PatternGenerator:
             return insights
 
         # First goal impact
+        # Baseline universel: ~82% des equipes gagnent quand elles marquent en premier
+        BASELINE_FIRST_GOAL = 0.82
         first_goal = events.get("first_goal", {})
-        if first_goal.get("scored_first_count", 0) > 0:
+        scored_first_count = first_goal.get("scored_first_count", 0)
+        if scored_first_count >= 8:  # Echantillon minimum: 8 matchs
             win_rate_scored = first_goal.get("win_rate_when_scored_first", 0)
-            if win_rate_scored >= 0.75:
+            delta_vs_baseline = win_rate_scored - BASELINE_FIRST_GOAL
+
+            # Ne generer que si vraiment exceptionnel (>= 90% ET au moins 8 points au-dessus du baseline)
+            if win_rate_scored >= 0.90 and delta_vs_baseline >= 0.08:
                 insights.append({
                     "type": "events",
                     "team": team_key,
                     "text": f"{team_name} gagne {win_rate_scored*100:.0f}% quand marque en premier "
-                            f"({first_goal['wins_when_scored_first']}/{first_goal['scored_first_count']}). "
-                            f"Demarrage crucial.",
+                            f"({first_goal['wins_when_scored_first']}/{scored_first_count}). "
+                            f"Taux exceptionnel (+{delta_vs_baseline*100:.0f} pts vs baseline).",
                     "confidence": "high",
                     "category": "first_goal",
                     "metric_value": win_rate_scored,
+                    "sample_size": scored_first_count,
                 })
 
         # Comebacks
         comebacks = events.get("comebacks", {})
-        if comebacks.get("comeback_attempts", 0) > 0:
+        comeback_attempts = comebacks.get("comeback_attempts", 0)
+        if comeback_attempts > 0:
             comeback_rate = comebacks.get("comeback_rate", 0)
             if comeback_rate >= 0.5:
                 insights.append({
                     "type": "events",
                     "team": team_key,
                     "text": f"{team_name} renverse {comeback_rate*100:.0f}% des matchs ou mene "
-                            f"({comebacks['comeback_successes']}/{comebacks['comeback_attempts']}). "
+                            f"({comebacks['comeback_successes']}/{comeback_attempts}). "
                             f"Mentalite forte.",
                     "confidence": "medium",
                     "category": "comeback",
                     "metric_value": comeback_rate,
+                    "sample_size": comeback_attempts,
                 })
 
         # Early cards impact
         early_cards = events.get("early_cards", {})
-        if early_cards.get("sample_with_early_card", 0) >= 3:
+        sample_with_card = early_cards.get("sample_with_early_card", 0)
+        if sample_with_card >= 3:
             delta = early_cards.get("delta", 0)
             if delta < -0.20:  # Impact negatif fort
                 insights.append({
                     "type": "events",
                     "team": team_key,
                     "text": f"{team_name} ne gagne que {early_cards['win_rate_with_early_card']*100:.0f}% "
-                            f"avec carton avant 30 min, contre {early_cards['win_rate_without_early_card']*100:.0f}% "
-                            f"sans. Discipline critique.",
+                            f"avec carton avant 30 min (n={sample_with_card}), "
+                            f"contre {early_cards['win_rate_without_early_card']*100:.0f}% sans. "
+                            f"Discipline critique.",
                     "confidence": "medium",
                     "category": "discipline",
                     "metric_value": abs(delta),
+                    "sample_size": sample_with_card,
                 })
 
         # Goals heatmap
@@ -315,13 +330,33 @@ class PatternGenerator:
         total_wins_comp = regular_time.get("total_wins", 0)
         logger.info(f"[{team_name}] Competition-specific regular time wins: {regular_time}")
 
+        # VALIDATION CROISÉE: Vérifier les victoires en phase de groupes
+        # En phase de groupes, TOUTES les victoires sont forcément en temps réglementaire
+        # (pas de prolongations/penalties en groupes)
+        by_phase = events_comp.get("by_phase", {})
+        group_stage_wins = by_phase.get("group_stage", {}).get("wins", 0)
+
         if total_wins_comp >= 1:  # Au moins 1 victoire dans la competition
             regular_rate_comp = regular_time.get("regular_time_win_rate", 1.0)
             wins_in_regular = regular_time.get("wins_in_regular_time", 0)
             wins_in_extra = regular_time.get("wins_in_extra_time", 0)
 
-            if regular_rate_comp == 0:
-                # JAMAIS gagné en temps réglementaire dans cette compétition
+            # VALIDATION: Si group_stage_wins > 0, alors wins_in_regular >= group_stage_wins
+            if group_stage_wins > 0 and wins_in_regular < group_stage_wins:
+                logger.warning(
+                    f"[{team_name}] INCOHÉRENCE DÉTECTÉE: {group_stage_wins} victoire(s) en phase de groupes "
+                    f"mais seulement {wins_in_regular} victoire(s) en temps réglementaire. "
+                    f"En phase de groupes, pas de prolongations ! Correction appliquée."
+                )
+                # Corriger: au minimum, les victoires en groupes sont en temps réglementaire
+                wins_in_regular = max(wins_in_regular, group_stage_wins)
+                wins_in_extra = max(0, total_wins_comp - wins_in_regular)
+                regular_rate_comp = wins_in_regular / total_wins_comp if total_wins_comp > 0 else 0
+
+            # NE PAS générer d'insight "JAMAIS en temps réglementaire" s'il y a des victoires en groupes
+            if regular_rate_comp == 0 and group_stage_wins == 0:
+                # JAMAIS gagné en temps réglementaire ET aucune victoire en phase de groupes
+                # (donc toutes les victoires sont en knockout avec prolongations/penalties)
                 insights.append({
                     "type": "events_competition",
                     "team": team_key,
@@ -332,8 +367,8 @@ class PatternGenerator:
                     "category": "competition_regular_time",
                     "metric_value": 1.0,  # High metric for "never"
                 })
-            elif regular_rate_comp <= 0.33 and total_wins_comp >= 3:
-                # Gagne rarement en temps réglementaire dans la compétition
+            elif regular_rate_comp <= 0.33 and total_wins_comp >= 3 and group_stage_wins == 0:
+                # Gagne rarement en temps réglementaire ET pas de victoires en groupes
                 insights.append({
                     "type": "events_competition",
                     "team": team_key,
@@ -346,7 +381,7 @@ class PatternGenerator:
                 })
 
         # NOUVEAU: Analyse par phase de compétition
-        by_phase = events_comp.get("by_phase", {})
+        # by_phase déjà défini ligne 336 pour validation croisée
         logger.info(f"[{team_name}] Phases analysis: {list(by_phase.keys())}")
 
         # Phases à exclure (trop spécifiques et potentiellement non pertinentes)
@@ -557,6 +592,63 @@ class PatternGenerator:
             })
 
         return insights
+
+    def _deduplicate_redundant_insights(self, insights: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Supprime les insights redondants (presents pour les deux equipes avec valeurs similaires).
+
+        Si le meme type d'insight est genere pour les DEUX equipes avec des valeurs similaires (±10%),
+        cela signifie que c'est un pattern banal et non differenciant. On les supprime tous les deux.
+
+        Args:
+            insights: Liste d'insights
+
+        Returns:
+            Liste d'insights dedupliquee
+        """
+        # Grouper par categorie
+        by_category = {}
+        for insight in insights:
+            category = insight["category"]
+            if category not in by_category:
+                by_category[category] = []
+            by_category[category].append(insight)
+
+        # Trouver les categories redondantes a supprimer
+        categories_to_remove = set()
+
+        for category, category_insights in by_category.items():
+            # Verifier si on a des insights pour les deux equipes
+            team_a_insights = [i for i in category_insights if i.get("team") == "team_a"]
+            team_b_insights = [i for i in category_insights if i.get("team") == "team_b"]
+
+            if len(team_a_insights) > 0 and len(team_b_insights) > 0:
+                # Comparer les valeurs metriques
+                for a_insight in team_a_insights:
+                    for b_insight in team_b_insights:
+                        a_value = a_insight.get("metric_value", 0)
+                        b_value = b_insight.get("metric_value", 0)
+                        delta = abs(a_value - b_value)
+
+                        # Si les valeurs sont similaires (< 10 points d'ecart), c'est redondant
+                        if delta < 0.10:
+                            logger.info(
+                                f"Removing redundant insights for category '{category}': "
+                                f"team_a={a_value:.2f}, team_b={b_value:.2f}, delta={delta:.2f}"
+                            )
+                            categories_to_remove.add(category)
+                            break
+
+        # Filtrer les insights redondants
+        filtered_insights = [
+            i for i in insights
+            if i["category"] not in categories_to_remove
+        ]
+
+        logger.info(f"Deduplication: {len(insights)} insights -> {len(filtered_insights)} insights "
+                   f"({len(insights) - len(filtered_insights)} removed)")
+
+        return filtered_insights
 
     def _calculate_importance(self, insight):
         """Calcule l'importance d'un insight pour tri."""

@@ -40,7 +40,7 @@ const modelOptions: ModelOption[] = [
 
 export const ModelDropdown: React.FC<ModelDropdownProps> = ({ onSelect }) => {
     return (
-        <div className="w-72 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+        <div className="w-[calc(100vw-2rem)] sm:w-72 max-w-sm bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
             <div className="p-2 space-y-1">
                 {modelOptions.map((option) => (
                     <button
@@ -48,15 +48,15 @@ export const ModelDropdown: React.FC<ModelDropdownProps> = ({ onSelect }) => {
                         onClick={() => onSelect(option.value)}
                         className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 transition-colors rounded-xl text-left"
                     >
-                        <div className="flex-1">
-                            <div className="text-sm font-medium text-slate-700">
+                        <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-slate-700 truncate">
                                 {option.label}
                             </div>
-                            <div className="text-[11px] text-slate-400 mt-0.5">
+                            <div className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">
                                 {option.description}
                             </div>
                         </div>
-                        <div className={`px-2 py-0.5 rounded text-[9px] font-medium uppercase ${option.badgeColor}`}>
+                        <div className={`px-2 py-0.5 rounded text-[9px] font-medium uppercase whitespace-nowrap ${option.badgeColor}`}>
                             {option.badge}
                         </div>
                     </button>

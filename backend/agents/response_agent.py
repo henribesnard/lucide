@@ -77,7 +77,7 @@ Safety notes: {json.dumps(analysis.safety_notes, ensure_ascii=False)}
             response = await self.llm.chat_completion(
                 messages=messages,
                 temperature=0.35,
-                max_tokens=650,
+                max_tokens=2000,  # Increased from 650 to allow complete analyses
             )
             return response.choices[0].message.content or ""
         except Exception as exc:

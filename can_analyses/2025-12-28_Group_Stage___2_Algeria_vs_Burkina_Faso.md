@@ -4,7 +4,7 @@ Date: 2025-12-28T17:30:00+00:00
 Round: Group Stage - 2
 Venue: Stade Prince Moulay Hassan
 Status: NS
-Generated: 2025-12-28T08:03:55.900437
+Generated: 2025-12-28T12:21:58.139555
 ---
 
 # Analyse Match : Algeria vs Burkina Faso
@@ -52,42 +52,26 @@ Generated: 2025-12-28T08:03:55.900437
 
 ### 🎯 Insights Clés
 
-#### ⚠️ Confiance ÉLEVÉE
-
-1. **Premier but décisif**
-   - Burkina Faso gagne 92% quand marque en premier (12/13). Demarrage crucial.
-   - Le démarrage est crucial pour cette équipe
-
-2. **Premier but décisif**
-   - Algeria gagne 82% quand marque en premier (14/17). Demarrage crucial.
-   - Le démarrage est crucial pour cette équipe
-
 #### 📈 Confiance MOYENNE
 
-3. **Capacité de renversement**
-   - Algeria renverse 67% des matchs ou mene (4/6). Mentalite forte.
+1. **Capacité de renversement**
+   - Algeria renverse 80% des matchs ou mene (4/5). Mentalite forte.
    - Mentalité de combattant et résilience
 
-4. **Solidité défensive**
+2. **Solidité défensive**
    - Algeria garde sa cage inviolee dans 50% de ses matchs. Defense solide.
    - Une défense particulièrement hermétique
-
-5. **Impact de la discipline**
-   - Algeria ne gagne que 25% avec carton avant 30 min, contre 69% sans. Discipline critique.
-   - La discipline tactique est déterminante
 
 ---
 
 ### 💡 Tendances et Patterns
 
 **Par catégorie d'insights :**
-- Premier but : 2 insights
 - Comebacks : 1 insight
 - Défense : 1 insight
-- Discipline : 1 insight
 
 **Par type d'analyse :**
-- Événements (timeline) : 4 insights
+- Événements (timeline) : 1 insight
 - Statistiques globales : 1 insight
 
 ---
@@ -95,10 +79,10 @@ Generated: 2025-12-28T08:03:55.900437
 ### 🔍 Analyse Technique
 
 **Données analysées :**
-- **156 appels API** vers API-Football v3
+- **120 appels API** vers API-Football v3
 - **60 matchs** analysés (30 + 30)
 - **116 matchs** avec données complètes (événements, statistiques, compositions)
-- **Temps de traitement** : 23.09 secondes
+- **Temps de traitement** : 23.92 secondes
 
 **Période d'analyse :**
 - Derniers 30 matchs par équipe (toutes compétitions)
@@ -109,8 +93,8 @@ Generated: 2025-12-28T08:03:55.900437
 
 ### ✅ Conclusion
 
-Match équilibré entre **Algeria** (63.3% de victoires) et **Burkina Faso** (51.7% de victoires). Les deux équipes affichent des statistiques comparables.
+**Algeria** part favori face à **Burkina Faso** (63.3% contre 51.7%).
 
 ---
 
-*Analyse générée par le système étendu avec algorithme complet (pandas/scipy/numpy) - 5 insights détectés sur 39 patterns possibles*
+*Analyse générée par le système étendu avec algorithme complet (pandas/scipy/numpy) - 2 insights détectés sur 39 patterns possibles*

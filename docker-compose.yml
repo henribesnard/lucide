@@ -66,6 +66,8 @@ services:
       SMTP_USER: ${SMTP_USER}
       SMTP_PASSWORD: ${SMTP_PASSWORD}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3001}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:3000,http://localhost:3001,http://localhost:3010,http://localhost:8000,http://localhost:8001}
+      CORS_ORIGIN_REGEX: ${CORS_ORIGIN_REGEX}
       PYTHONUNBUFFERED: 1
     volumes:
       - ./backend:/app/backend

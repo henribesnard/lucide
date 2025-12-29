@@ -79,7 +79,12 @@
       "Bash(powershell.exe -ExecutionPolicy Bypass -File test_api_30_matches.ps1)",
       "Bash(Select-String -Pattern \"BENIN|regular_time|competition_specific|pattern\" -Context 0,2)",
       "Bash(Select-Object -Last 50)",
-      "Bash(Select-Object -Last 5)"
+      "Bash(Select-Object -Last 5)",
+      "Bash(Select-String -Pattern \"Mozambique|Gabon vs|INCOHÉRENCE|1/4|2/4\")",
+      "Bash(for file in can_analyses/2025-12-28_Group_Stage___2_*.md)",
+      "Bash(flutter analyze:*)",
+      "Bash(flutter clean:*)",
+      "Bash(flutter pub get:*)"
     ],
     "deny": [],
     "ask": []

@@ -4,7 +4,7 @@ Date: 2025-12-28T12:30:00+00:00
 Round: Group Stage - 2
 Venue: Stade Adrar
 Status: NS
-Generated: 2025-12-28T08:03:10.895058
+Generated: 2025-12-28T12:21:11.467565
 ---
 
 # Analyse Match : Gabon vs Mozambique
@@ -49,30 +49,22 @@ Generated: 2025-12-28T08:03:10.895058
 
 #### ⚠️ Confiance ÉLEVÉE
 
-1. **Competition Regular Time**
-   - Mozambique n'a JAMAIS gagne en temps reglementaire dans cette competition (2 victoire(s) uniquement en prolongations/penalties). Equipe de prolongations en competition.
-   - Facteur à prendre en compte
-
-2. **Premier but décisif**
-   - Gabon gagne 91% quand marque en premier (10/11). Demarrage crucial.
-   - Le démarrage est crucial pour cette équipe
-
-3. **Premier but décisif**
-   - Mozambique gagne 90% quand marque en premier (9/10). Demarrage crucial.
-   - Le démarrage est crucial pour cette équipe
-
-4. **Competition Form**
+1. **Competition Form**
    - Gabon dans cette competition: 24% victoires (4/17), contre 46% globalement. Perf inferieure.
    - Facteur à prendre en compte
 
 #### 📈 Confiance MOYENNE
 
-5. **Phase Weakness**
+2. **Phase Weakness**
    - Mozambique faible en phase de groupes: 25% victoires (1/4). Phase critique.
    - Facteur à prendre en compte
 
-6. **Impact de la discipline**
-   - Mozambique ne gagne que 0% avec carton avant 30 min, contre 38% sans. Discipline critique.
+3. **Impact de la discipline**
+   - Mozambique ne gagne que 0% avec carton avant 30 min (n=3), contre 37% sans. Discipline critique.
+   - La discipline tactique est déterminante
+
+4. **Impact de la discipline**
+   - Gabon ne gagne que 25% avec carton avant 30 min (n=4), contre 50% sans. Discipline critique.
    - La discipline tactique est déterminante
 
 ---
@@ -80,15 +72,12 @@ Generated: 2025-12-28T08:03:10.895058
 ### 💡 Tendances et Patterns
 
 **Par catégorie d'insights :**
-- Premier but : 2 insights
-- Competition Regular Time : 1 insight
+- Discipline : 2 insights
 - Phase Weakness : 1 insight
 - Competition Form : 1 insight
-- Discipline : 1 insight
 
 **Par type d'analyse :**
-- Événements (timeline) : 3 insights
-- Events Competition : 1 insight
+- Événements (timeline) : 2 insights
 - Phase Performance : 1 insight
 - Statistiques globales : 1 insight
 
@@ -97,10 +86,10 @@ Generated: 2025-12-28T08:03:10.895058
 ### 🔍 Analyse Technique
 
 **Données analysées :**
-- **125 appels API** vers API-Football v3
+- **148 appels API** vers API-Football v3
 - **60 matchs** analysés (30 + 30)
 - **88 matchs** avec données complètes (événements, statistiques, compositions)
-- **Temps de traitement** : 17.14 secondes
+- **Temps de traitement** : 18.30 secondes
 
 **Période d'analyse :**
 - Derniers 30 matchs par équipe (toutes compétitions)
@@ -111,8 +100,8 @@ Generated: 2025-12-28T08:03:10.895058
 
 ### ✅ Conclusion
 
-Match équilibré entre **Gabon** (46.4% de victoires) et **Mozambique** (33.3% de victoires). Les deux équipes affichent des statistiques comparables.
+**Gabon** part favori face à **Mozambique** (46.4% contre 33.3%).
 
 ---
 
-*Analyse générée par le système étendu avec algorithme complet (pandas/scipy/numpy) - 6 insights détectés sur 39 patterns possibles*
+*Analyse générée par le système étendu avec algorithme complet (pandas/scipy/numpy) - 4 insights détectés sur 39 patterns possibles*

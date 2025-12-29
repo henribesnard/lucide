@@ -4,7 +4,7 @@ Date: 2025-12-28T20:00:00+00:00
 Round: Group Stage - 2
 Venue: Stade de Marrakech
 Status: NS
-Generated: 2025-12-28T08:06:33.661646
+Generated: 2025-12-28T18:02:49.732791
 ---
 
 # Analyse Match : Ivory Coast vs Cameroon
@@ -59,21 +59,17 @@ Generated: 2025-12-28T08:06:33.661646
    - Un ascendant psychologique important
 
 2. **Premier but décisif**
-   - Ivory Coast gagne 92% quand marque en premier (12/13). Demarrage crucial.
-   - Le démarrage est crucial pour cette équipe
-
-3. **Premier but décisif**
-   - Cameroon gagne 81% quand marque en premier (13/16). Demarrage crucial.
+   - Ivory Coast gagne 93% quand marque en premier (14/15). Taux exceptionnel (+11 pts vs baseline).
    - Le démarrage est crucial pour cette équipe
 
 #### 📈 Confiance MOYENNE
 
-4. **Solidité défensive**
+3. **Solidité défensive**
    - Ivory Coast garde sa cage inviolee dans 57% de ses matchs. Defense solide.
    - Une défense particulièrement hermétique
 
-5. **Impact de la discipline**
-   - Cameroon ne gagne que 0% avec carton avant 30 min, contre 57% sans. Discipline critique.
+4. **Impact de la discipline**
+   - Cameroon ne gagne que 0% avec carton avant 30 min (n=6), contre 57% sans. Discipline critique.
    - La discipline tactique est déterminante
 
 ---
@@ -81,13 +77,13 @@ Generated: 2025-12-28T08:06:33.661646
 ### 💡 Tendances et Patterns
 
 **Par catégorie d'insights :**
-- Premier but : 2 insights
 - Domination H2H : 1 insight
+- Premier but : 1 insight
 - Défense : 1 insight
 - Discipline : 1 insight
 
 **Par type d'analyse :**
-- Événements (timeline) : 3 insights
+- Événements (timeline) : 2 insights
 - Historique H2H : 1 insight
 - Statistiques globales : 1 insight
 
@@ -96,10 +92,10 @@ Generated: 2025-12-28T08:06:33.661646
 ### 🔍 Analyse Technique
 
 **Données analysées :**
-- **168 appels API** vers API-Football v3
+- **180 appels API** vers API-Football v3
 - **60 matchs** analysés (30 + 30)
 - **115 matchs** avec données complètes (événements, statistiques, compositions)
-- **Temps de traitement** : 23.99 secondes
+- **Temps de traitement** : 25.54 secondes
 
 **Période d'analyse :**
 - Derniers 30 matchs par équipe (toutes compétitions)
@@ -110,8 +106,8 @@ Generated: 2025-12-28T08:06:33.661646
 
 ### ✅ Conclusion
 
-Le **Ivory Coast** part favori avec une forme solide (60% de victoires). Le **Cameroon** reste dangereux mais affiche des statistiques inférieures.
+**Ivory Coast** part favori face à **Cameroon** (60.0% contre 44.8%).
 
 ---
 
-*Analyse générée par le système étendu avec algorithme complet (pandas/scipy/numpy) - 5 insights détectés sur 39 patterns possibles*
+*Analyse générée par le système étendu avec algorithme complet (pandas/scipy/numpy) - 4 insights détectés sur 39 patterns possibles*

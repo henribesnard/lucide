@@ -77,7 +77,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
     const showPlayerDropdown = (match !== null) || (team !== null);
 
     return (
-        <div className="px-3 py-3 bg-white flex items-center gap-1.5 rounded-b-2xl flex-wrap">
+        <div className="px-3 py-2.5 flex items-center gap-1.5 flex-wrap">
             <ContextSelector<League>
                 type="league"
                 icon={<TrophyIcon className="w-5 h-5 text-slate-600" />}

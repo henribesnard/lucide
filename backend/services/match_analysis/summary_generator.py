@@ -307,39 +307,69 @@ class MatchSummaryGenerator:
         team_a_win_rate = team_a_stats.get("win_rate", 0)
         team_b_win_rate = team_b_stats.get("win_rate", 0)
 
-        # Determiner le favori
-        if team_a_win_rate > team_b_win_rate + 15:
-            favorite = team_a
-            underdog = team_b
-            fav_wr = team_a_win_rate
-        elif team_b_win_rate > team_a_win_rate + 15:
-            favorite = team_b
-            underdog = team_a
-            fav_wr = team_b_win_rate
-        else:
+        # Calculer l'ecart
+        delta = abs(team_a_win_rate - team_b_win_rate)
+
+        # Determiner le favori avec seuils plus precis
+        if delta < 5:
+            # Match tres serre (< 5 points d'ecart)
             return (
-                f"Match équilibré entre **{team_a}** ({team_a_win_rate:.1f}% de victoires) "
-                f"et **{team_b}** ({team_b_win_rate:.1f}% de victoires). "
-                f"Les deux équipes affichent des statistiques comparables."
+                f"Match très serré entre **{team_a}** ({team_a_win_rate:.1f}%) "
+                f"et **{team_b}** ({team_b_win_rate:.1f}%). "
+                f"Les deux équipes affichent des statistiques quasi-identiques."
+            )
+        elif delta < 10:
+            # Match equilibre avec leger avantage (5-10 points)
+            leader = team_a if team_a_win_rate > team_b_win_rate else team_b
+            return (
+                f"Match équilibré entre **{team_a}** ({team_a_win_rate:.1f}%) "
+                f"et **{team_b}** ({team_b_win_rate:.1f}%), "
+                f"avec un léger avantage pour **{leader}**."
+            )
+        elif delta < 20:
+            # Favori identifie (10-20 points)
+            favorite = team_a if team_a_win_rate > team_b_win_rate else team_b
+            underdog = team_b if favorite == team_a else team_a
+            fav_wr = team_a_win_rate if favorite == team_a else team_b_win_rate
+
+            # Trouver un insight cle sur le favori
+            key_insight = None
+            for insight in insights:
+                if "100%" in insight.get("text", "") and insight.get("confidence") == "high":
+                    key_insight = insight.get("text", "")
+                    break
+
+            conclusion = (
+                f"**{favorite}** part favori face à **{underdog}** "
+                f"({fav_wr:.1f}% contre {team_b_win_rate if favorite == team_a else team_a_win_rate:.1f}%)."
             )
 
-        # Trouver un insight cle sur le favori
-        key_insight = None
-        for insight in insights:
-            if "100%" in insight.get("text", "") and insight.get("confidence") == "high":
-                key_insight = insight.get("text", "")
-                break
+            if key_insight:
+                conclusion += f"\n\n**Facteur déterminant** : {key_insight}"
 
-        conclusion = (
-            f"Le **{favorite}** part "
-            f"{'largement ' if fav_wr > 70 else ''}favori avec une forme "
-            f"{'exceptionnelle' if fav_wr > 80 else 'solide'} "
-            f"({fav_wr:.0f}% de victoires). "
-            f"Le **{underdog}** reste dangereux mais affiche des statistiques "
-            f"{'nettement ' if abs(team_a_win_rate - team_b_win_rate) > 25 else ''}inférieures."
-        )
+            return conclusion
+        else:
+            # Favori net (>= 20 points d'ecart)
+            favorite = team_a if team_a_win_rate > team_b_win_rate else team_b
+            underdog = team_b if favorite == team_a else team_a
+            fav_wr = team_a_win_rate if favorite == team_a else team_b_win_rate
 
-        if key_insight:
-            conclusion += f"\n\n**Facteur déterminant** : {key_insight}"
+            # Trouver un insight cle sur le favori
+            key_insight = None
+            for insight in insights:
+                if "100%" in insight.get("text", "") and insight.get("confidence") == "high":
+                    key_insight = insight.get("text", "")
+                    break
 
-        return conclusion
+            conclusion = (
+                f"**{favorite}** est nettement favori avec une forme "
+                f"{'exceptionnelle' if fav_wr > 70 else 'solide'} "
+                f"({fav_wr:.1f}% de victoires). "
+                f"**{underdog}** affiche des statistiques nettement inférieures "
+                f"({team_b_win_rate if favorite == team_a else team_a_win_rate:.1f}%)."
+            )
+
+            if key_insight:
+                conclusion += f"\n\n**Facteur déterminant** : {key_insight}"
+
+            return conclusion

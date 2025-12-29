@@ -45,10 +45,14 @@ app = FastAPI(
 # CORS configuration from environment
 cors_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]
 logger.info(f"CORS origins: {cors_origins}")
+cors_origin_regex = settings.CORS_ORIGIN_REGEX.strip() or None
+if cors_origin_regex:
+    logger.info(f"CORS origin regex: {cors_origin_regex}")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
+    allow_origin_regex=cors_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -802,6 +806,44 @@ async def get_teams(
         return {"teams": mapped, "total": len(mapped)}
     except Exception as exc:
         logger.error(f"Error fetching teams: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/teams/{team_id}/squad", tags=["Data"])
+async def get_team_squad(
+    team_id: int,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get full squad (all players) for a team without pagination.
+    """
+    try:
+        if not football_client:
+            raise HTTPException(status_code=500, detail="Football API client not initialized")
+
+        squad_data = await football_client.get_players_squads(team_id=team_id)
+
+        if not squad_data or len(squad_data) == 0:
+            return {"players": []}
+
+        squad_item = squad_data[0]
+        players_list = squad_item.get("players", [])
+
+        mapped = []
+        for p in players_list:
+            mapped.append({
+                "id": p.get("id"),
+                "name": p.get("name"),
+                "photo": p.get("photo") or "",
+                "position": p.get("position") or "",
+                "number": p.get("number"),
+                "age": p.get("age"),
+            })
+
+        return {"players": mapped}
+
+    except Exception as exc:
+        logger.error(f"Error fetching team squad: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc))
 
 

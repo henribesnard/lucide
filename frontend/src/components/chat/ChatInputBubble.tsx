@@ -14,7 +14,7 @@ interface ChatInputBubbleProps {
     onSubmit: () => void;
     isLoading?: boolean;
 
-    // Context props passed down
+    // Context props
     league: League | null;
     match: Match | null;
     team: Team | null;
@@ -23,12 +23,10 @@ interface ChatInputBubbleProps {
     onMatchSelect: (match: Match | null) => void;
     onTeamSelect: (team: Team | null) => void;
     onPlayerSelect: (player: Player | null) => void;
-
     leagues: League[];
     favoriteLeagueIds: number[];
     loadingLeagues?: boolean;
     contextLocked?: boolean;
-
     modelType?: ModelType;
     onModelTypeChange?: (modelType: ModelType) => void;
 }
@@ -62,7 +60,7 @@ export const ChatInputBubble: React.FC<ChatInputBubbleProps> = ({
 
     return (
         <div className="bg-white rounded-2xl shadow-lg border border-slate-200 hover:border-slate-300 transition-all duration-200">
-            {/* Input Area */}
+            {/* Text Input Area */}
             <div className="relative px-2 pt-2">
                 <textarea
                     ref={textareaRef}
@@ -70,7 +68,7 @@ export const ChatInputBubble: React.FC<ChatInputBubbleProps> = ({
                     onChange={(e) => onChange(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder={t('chatPlaceholder')}
-                    className="w-full pl-3 pr-14 py-4 text-slate-800 placeholder-slate-400 resize-none focus:outline-none text-base leading-relaxed bg-transparent min-h-[60px] rounded-t-xl"
+                    className="w-full pl-3 pr-14 py-4 text-slate-800 placeholder-slate-400 resize-none focus:outline-none text-base leading-relaxed bg-transparent min-h-[60px]"
                     rows={1}
                     disabled={isLoading}
                 />
@@ -84,14 +82,16 @@ export const ChatInputBubble: React.FC<ChatInputBubbleProps> = ({
                 </button>
             </div>
 
-            {/* Subtle Separator */}
-            <div className="h-4"></div>
+            {/* Separator */}
+            <div className="h-px bg-slate-100 mx-4 my-2"></div>
 
-            {/* Context Bar */}
-            <ContextBar
-                {...contextProps}
-                disabled={contextLocked}
-            />
+            {/* Context Bar - At bottom inside the bubble like Claude AI */}
+            <div className="px-2 pb-2">
+                <ContextBar
+                    {...contextProps}
+                    disabled={contextLocked}
+                />
+            </div>
         </div>
     );
 };

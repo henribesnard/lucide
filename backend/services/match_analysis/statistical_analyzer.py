@@ -472,6 +472,13 @@ class StatisticalAnalyzer:
         Returns:
             Dict {stat_name: (correlation, p_value)}
         """
+        # Stats tautologiques a exclure (correlation evidente avec victoires)
+        TAUTOLOGICAL_STATS = {
+            "shots_on_goal", "shots_on_target", "total_shots_on_target",
+            "goals_scored", "goals_for", "goals",
+            "shots_insidebox", "shots_on_goal_pct"
+        }
+
         # Merger matches et stats
         merged = matches_df.merge(stats_df, on="fixture_id", how="left")
 
@@ -484,15 +491,25 @@ class StatisticalAnalyzer:
             if col not in merged.columns:
                 continue
 
+            # Ignorer les stats tautologiques
+            if col in TAUTOLOGICAL_STATS:
+                logger.debug(f"Skipping tautological stat: {col}")
+                continue
+
             # Supprimer les NaN
             data = merged[[col, "won"]].dropna()
-            if len(data) < 3:  # Besoin d'au moins 3 points
+            if len(data) < 10:  # Besoin d'au moins 10 points (augmente de 3 a 10)
                 continue
 
             try:
                 # Calcul correlation de Pearson
                 corr, p_value = scipy_stats.pearsonr(data[col], data["won"])
-                correlations[col] = (float(corr), float(p_value))
+
+                # Filtrer les correlations suspectes (> 0.95 = probablement overfitting ou tautologie)
+                if abs(corr) <= 0.95:
+                    correlations[col] = (float(corr), float(p_value))
+                else:
+                    logger.debug(f"Skipping suspicious correlation for {col}: r={corr:.2f} (too high, likely overfitting)")
             except Exception as e:
                 logger.warning(f"Erreur correlation pour {col}: {e}")
 
