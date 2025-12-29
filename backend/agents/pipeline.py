@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Callable, Optional
 
 from backend.agents.analysis_agent import AnalysisAgent
 from backend.agents.intent_agent import IntentAgent
@@ -158,7 +158,8 @@ class LucidePipeline:
         context: Dict[str, Any] = None,
         user_id: str = None,
         model_type: str = "slow",
-        language: str = "fr"
+        language: str = "fr",
+        status_callback: Optional[Callable[[str, str], None]] = None
     ) -> Dict[str, Any]:
         # Log and validate context (frontend may already inject text into user_message).
         if context:
@@ -224,6 +225,10 @@ class LucidePipeline:
                 logger.error(f"Context validation errors: {validation_errors}")
 
         start_total = time.perf_counter()
+
+        # Step 1: Intent detection
+        if status_callback:
+            status_callback("intent", "🔍 Analyse de votre question...")
         intent_start = time.perf_counter()
         intent: IntentResult = await self.intent_agent.run(user_message, context=context)
         intent_latency = time.perf_counter() - intent_start
@@ -258,6 +263,9 @@ class LucidePipeline:
         tool_results: List[ToolCallResult] = []
         assistant_notes = "Aucun appel de tool requis."
         if intent.needs_data:
+            # Step 2: Tool execution
+            if status_callback:
+                status_callback("tools", "🛠️ Collecte des données football...")
             tool_start = time.perf_counter()
             tool_results, assistant_notes = await self.tool_agent.run(
                 user_message,
@@ -289,6 +297,9 @@ class LucidePipeline:
         causal_payload: Dict[str, Any] = {}
 
         if settings.ENABLE_CAUSAL_AI and self.causal_agent.should_run(user_message, intent, tool_results):
+            # Step 3: Causal analysis
+            if status_callback:
+                status_callback("causal", "🧠 Analyse causale en cours...")
             try:
                 causal_result = await self.causal_agent.run(
                     question=user_message,
@@ -308,6 +319,9 @@ class LucidePipeline:
 
         analysis_latency = 0.0
         if self._needs_analysis(intent, context, tool_results):
+            # Step 4: Analysis
+            if status_callback:
+                status_callback("analysis", "📊 Analyse des données...")
             analysis_start = time.perf_counter()
             analysis = await analysis_agent.run(
                 user_message=user_message,
@@ -327,6 +341,10 @@ class LucidePipeline:
             logger.info("Skipped analysis for intent %s (context=%s)", intent.intent, context.get("context_type") if context else "none")
         analysis.causal_summary = causal_summary
         analysis.causal_payload = causal_payload
+
+        # Step 5: Response generation
+        if status_callback:
+            status_callback("response", "✍️ Génération de la réponse...")
         response_start = time.perf_counter()
         final_answer = await response_agent.run(
             user_message=user_message,

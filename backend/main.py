@@ -68,6 +68,77 @@ football_client: Optional[FootballAPIClient] = None
 context_manager: Optional[ContextManager] = None
 
 
+def generate_conversation_title(message: str, context: Optional[Dict[str, Any]] = None) -> str:
+    """
+    Generate a smart conversation title from context and message.
+
+    Examples:
+    - Context: CAN + teams -> "CAN Gabon vs Mozambique : analyse"
+    - Context: League + team -> "Ligue 1 PSG : statistiques"
+    - No context -> First 50 chars of message
+    """
+    if not context:
+        # Fallback to message truncation
+        return message[:50] + "..." if len(message) > 50 else message
+
+    title_parts = []
+
+    # Extract competition/league name
+    if "competition_name" in context:
+        comp_name = context["competition_name"]
+        # Shorten common competition names
+        comp_name = comp_name.replace("Africa Cup of Nations", "CAN")
+        comp_name = comp_name.replace("Coupe d'Afrique des Nations", "CAN")
+        comp_name = comp_name.replace("UEFA Champions League", "LDC")
+        comp_name = comp_name.replace("Premier League", "EPL")
+        title_parts.append(comp_name)
+    elif "league_name" in context:
+        league_name = context["league_name"]
+        # Shorten league names
+        league_name = league_name.replace("Premier League", "EPL")
+        title_parts.append(league_name)
+
+    # Extract team names (for matches)
+    if "team1_name" in context and "team2_name" in context:
+        team_match = f"{context['team1_name']} vs {context['team2_name']}"
+        title_parts.append(team_match)
+    elif "team_name" in context:
+        title_parts.append(context["team_name"])
+
+    # Extract player name
+    if "player_name" in context:
+        title_parts.append(context["player_name"])
+
+    # Add question intent if title is not too long
+    if title_parts:
+        base_title = " ".join(title_parts)
+
+        # Extract intent from message (simple keyword matching)
+        message_lower = message.lower()
+        intent_suffix = ""
+
+        if any(word in message_lower for word in ["analys", "analyse", "décortiq"]):
+            intent_suffix = " : analyse"
+        elif any(word in message_lower for word in ["statistique", "stats", "chiffres"]):
+            intent_suffix = " : statistiques"
+        elif any(word in message_lower for word in ["classement", "ranking"]):
+            intent_suffix = " : classement"
+        elif any(word in message_lower for word in ["prochains matchs", "calendrier"]):
+            intent_suffix = " : calendrier"
+        elif any(word in message_lower for word in ["pronostic", "prédiction", "prédire"]):
+            intent_suffix = " : pronostic"
+
+        full_title = base_title + intent_suffix
+
+        # Limit total length
+        if len(full_title) > 60:
+            return full_title[:57] + "..."
+        return full_title
+
+    # Fallback to message truncation
+    return message[:50] + "..." if len(message) > 50 else message
+
+
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
@@ -154,8 +225,8 @@ async def chat(
             ).first()
 
             if not existing_conv:
-                # Extract title from first message
-                title = request.message[:50] + "..." if len(request.message) > 50 else request.message
+                # Generate smart title from context and message
+                title = generate_conversation_title(request.message, request.context)
 
                 new_conversation = Conversation(
                     conversation_id=session_id,
@@ -253,8 +324,8 @@ async def chat_stream(
                 ).first()
 
                 if not existing_conv:
-                    # Extract title from first message
-                    title = request.message[:50] + "..." if len(request.message) > 50 else request.message
+                    # Generate smart title from context and message
+                    title = generate_conversation_title(request.message, request.context)
 
                     new_conversation = Conversation(
                         conversation_id=session_id,
@@ -281,17 +352,48 @@ async def chat_stream(
             language = request.language or getattr(current_user, 'preferred_language', 'fr') or 'fr'
             logger.info(f"[STREAM] Processing with language: {language}")
 
-            # Send status update
-            yield f"data: {json.dumps({'type': 'status', 'message': 'Processing your request...'})}\n\n"
+            # Create status queue for real-time updates
+            status_queue = asyncio.Queue()
 
-            # Run the pipeline
-            result = await pipeline.process(
-                message_to_process,
-                context=request.context,
-                user_id=str(current_user.user_id),
-                model_type=request.model_type or "slow",
-                language=language
+            def status_callback(step: str, message: str):
+                """Called by pipeline at each step to send SSE status updates"""
+                logger.info(f"[STREAM] Pipeline step: {step} - {message}")
+                # Put status in queue (non-blocking)
+                status_queue.put_nowait({'type': 'status', 'step': step, 'message': message})
+
+            # Send initial status update
+            initial_status = {'type': 'status', 'step': 'starting', 'message': "Démarrage de l'analyse..."}
+            yield f"data: {json.dumps(initial_status)}\n\n"
+
+            # Run the pipeline in a background task
+            pipeline_task = asyncio.create_task(
+                pipeline.process(
+                    message_to_process,
+                    context=request.context,
+                    user_id=str(current_user.user_id),
+                    model_type=request.model_type or "slow",
+                    language=language,
+                    status_callback=status_callback
+                )
             )
+
+            # Stream status updates while pipeline is running
+            while not pipeline_task.done():
+                try:
+                    # Wait for status update with short timeout
+                    status_update = await asyncio.wait_for(status_queue.get(), timeout=0.1)
+                    yield f"data: {json.dumps(status_update)}\n\n"
+                except asyncio.TimeoutError:
+                    # No status update, continue waiting
+                    pass
+
+            # Drain any remaining status updates
+            while not status_queue.empty():
+                status_update = status_queue.get_nowait()
+                yield f"data: {json.dumps(status_update)}\n\n"
+
+            # Get pipeline result
+            result = await pipeline_task
 
             intent_obj = result["intent"]
             tool_names = [tool.name for tool in result["tool_results"]]
