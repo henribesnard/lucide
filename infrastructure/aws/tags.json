@@ -1,0 +1,19 @@
+[
+  {
+    "ResourceType": "instance",
+    "Tags": [
+      {
+        "Key": "Name",
+        "Value": "lucide-bot"
+      },
+      {
+        "Key": "Project",
+        "Value": "Lucide"
+      },
+      {
+        "Key": "Environment",
+        "Value": "production"
+      }
+    ]
+  }
+]

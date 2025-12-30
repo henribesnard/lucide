@@ -1,6 +1,6 @@
 import os
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -98,11 +98,19 @@ async def verify_email(request: VerifyEmailRequest, db: Session = Depends(get_db
         )
 
     # Check if token expired
-    if user.verification_token_expires and user.verification_token_expires < datetime.utcnow():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Verification token expired"
-        )
+    if user.verification_token_expires:
+        expires_at = user.verification_token_expires
+        # Normalize to UTC-aware datetime to avoid naive/aware comparison errors
+        if expires_at.tzinfo is None or expires_at.tzinfo.utcoffset(expires_at) is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        else:
+            expires_at = expires_at.astimezone(timezone.utc)
+
+        if expires_at < datetime.now(timezone.utc):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Verification token expired"
+            )
 
     # Verify user
     user.is_verified = True

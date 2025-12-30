@@ -205,37 +205,23 @@ async def chat(
 
         if not session_data:
             # New session - store metadata in Redis
-            await session_manager.set_session(session_id, {
+            session_data = {
                 "user_id": str(current_user.user_id),
                 "email": current_user.email,
                 "created_at": datetime.utcnow().isoformat(),
                 "last_activity": datetime.utcnow().isoformat()
-            })
+            }
+            await session_manager.set_session(session_id, session_data)
             logger.info(f"Session {session_id} registered in Redis")
         else:
             # Existing session - update last activity (TTL auto-refreshed by get_session)
             session_data["last_activity"] = datetime.utcnow().isoformat()
             await session_manager.set_session(session_id, session_data)
 
-        # Create Conversation in database if it doesn't exist
-        if is_new_session:
-            existing_conv = db.query(Conversation).filter(
-                Conversation.conversation_id == session_id,
-                Conversation.user_id == current_user.user_id
-            ).first()
-
-            if not existing_conv:
-                # Generate smart title from context and message
-                title = generate_conversation_title(request.message, request.context)
-
-                new_conversation = Conversation(
-                    conversation_id=session_id,
-                    user_id=current_user.user_id,
-                    title=title
-                )
-                db.add(new_conversation)
-                db.commit()
-                logger.info(f"Created conversation {session_id} in database for user {current_user.email}")
+        # Context hint: prefer stored session context, fall back to request context if provided
+        context_hint = session_data.get("context") if session_data else None
+        if not context_hint and request.context:
+            context_hint = request.context
 
         # Create or get pipeline instance
         if session_id not in sessions:
@@ -247,8 +233,8 @@ async def chat(
 
         pipeline = sessions[session_id]
         message_to_process = request.message
-        if request.context:
-            logger.info(f"Processing with context: {request.context}")
+        if context_hint:
+            logger.info(f"Processing with context hint: {context_hint}")
         logger.info(f"Processing message for session {session_id}: {message_to_process[:120]}...")
 
         # Determine language: request > user preference > default 'fr'
@@ -257,11 +243,40 @@ async def chat(
 
         result = await pipeline.process(
             message_to_process,
-            context=request.context,
+            context=context_hint,
             user_id=str(current_user.user_id),
             model_type=request.model_type or "slow",
             language=language
         )
+
+        resolved_context = result.get("context")
+        context_to_store = resolved_context or context_hint
+        if session_data is None:
+            session_data = {}
+        session_data["last_activity"] = datetime.utcnow().isoformat()
+        if context_to_store:
+            session_data["context"] = context_to_store
+        await session_manager.set_session(session_id, session_data)
+
+        # Create Conversation in database if it doesn't exist
+        if is_new_session:
+            existing_conv = db.query(Conversation).filter(
+                Conversation.conversation_id == session_id,
+                Conversation.user_id == current_user.user_id
+            ).first()
+
+            if not existing_conv:
+                # Generate smart title from resolved context and message
+                title = generate_conversation_title(request.message, resolved_context or context_hint)
+
+                new_conversation = Conversation(
+                    conversation_id=session_id,
+                    user_id=current_user.user_id,
+                    title=title
+                )
+                db.add(new_conversation)
+                db.commit()
+                logger.info(f"Created conversation {session_id} in database for user {current_user.email}")
 
         intent_obj = result["intent"]
         tool_names = [tool.name for tool in result["tool_results"]]
@@ -307,37 +322,23 @@ async def chat_stream(
 
             if not session_data:
                 # New session - store metadata in Redis
-                await session_manager.set_session(session_id, {
+                session_data = {
                     "user_id": str(current_user.user_id),
                     "email": current_user.email,
                     "created_at": datetime.utcnow().isoformat(),
                     "last_activity": datetime.utcnow().isoformat()
-                })
+                }
+                await session_manager.set_session(session_id, session_data)
                 logger.info(f"[STREAM] Session {session_id} registered in Redis")
             else:
                 # Existing session - update last activity
                 session_data["last_activity"] = datetime.utcnow().isoformat()
                 await session_manager.set_session(session_id, session_data)
 
-            # Create Conversation in database if it doesn't exist
-            if is_new_session:
-                existing_conv = db.query(Conversation).filter(
-                    Conversation.conversation_id == session_id,
-                    Conversation.user_id == current_user.user_id
-                ).first()
-
-                if not existing_conv:
-                    # Generate smart title from context and message
-                    title = generate_conversation_title(request.message, request.context)
-
-                    new_conversation = Conversation(
-                        conversation_id=session_id,
-                        user_id=current_user.user_id,
-                        title=title
-                    )
-                    db.add(new_conversation)
-                    db.commit()
-                    logger.info(f"[STREAM] Created conversation {session_id} in database for user {current_user.email}")
+            # Context hint: prefer stored session context, fall back to request context if provided
+            context_hint = session_data.get("context") if session_data else None
+            if not context_hint and request.context:
+                context_hint = request.context
 
             # Create or get pipeline instance
             if session_id not in sessions:
@@ -350,8 +351,8 @@ async def chat_stream(
             pipeline = sessions[session_id]
             message_to_process = request.message
 
-            if request.context:
-                logger.info(f"Processing with context: {request.context}")
+            if context_hint:
+                logger.info(f"Processing with context hint: {context_hint}")
             logger.info(f"[STREAM] Processing message for session {session_id}: {message_to_process[:120]}...")
 
             # Determine language: request > user preference > default 'fr'
@@ -375,7 +376,7 @@ async def chat_stream(
             pipeline_task = asyncio.create_task(
                 pipeline.process(
                     message_to_process,
-                    context=request.context,
+                    context=context_hint,
                     user_id=str(current_user.user_id),
                     model_type=request.model_type or "slow",
                     language=language,
@@ -400,6 +401,35 @@ async def chat_stream(
 
             # Get pipeline result
             result = await pipeline_task
+
+            resolved_context = result.get("context")
+            context_to_store = resolved_context or context_hint
+            if session_data is None:
+                session_data = {}
+            session_data["last_activity"] = datetime.utcnow().isoformat()
+            if context_to_store:
+                session_data["context"] = context_to_store
+            await session_manager.set_session(session_id, session_data)
+
+            # Create Conversation in database if it doesn't exist
+            if is_new_session:
+                existing_conv = db.query(Conversation).filter(
+                    Conversation.conversation_id == session_id,
+                    Conversation.user_id == current_user.user_id
+                ).first()
+
+                if not existing_conv:
+                    # Generate smart title from resolved context and message
+                    title = generate_conversation_title(request.message, resolved_context or context_hint)
+
+                    new_conversation = Conversation(
+                        conversation_id=session_id,
+                        user_id=current_user.user_id,
+                        title=title
+                    )
+                    db.add(new_conversation)
+                    db.commit()
+                    logger.info(f"[STREAM] Created conversation {session_id} in database for user {current_user.email}")
 
             intent_obj = result["intent"]
             tool_names = [tool.name for tool in result["tool_results"]]

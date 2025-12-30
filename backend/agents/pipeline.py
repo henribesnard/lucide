@@ -7,6 +7,7 @@ from backend.agents.intent_agent import IntentAgent
 from backend.agents.response_agent import ResponseAgent
 from backend.agents.tool_agent import ToolAgent
 from backend.agents.context_agent import ContextAgent
+from backend.agents.context_resolver import ContextResolver
 from backend.agents.causal_agent import CausalAgent
 from backend.agents.types import AnalysisResult, IntentResult, ToolCallResult
 from backend.api.football_api import FootballAPIClient
@@ -96,6 +97,7 @@ class LucidePipeline:
             api_key=settings.FOOTBALL_API_KEY,
             base_url=settings.FOOTBALL_API_BASE_URL,
         )
+        self.context_resolver = ContextResolver(self.api_client)
 
         # Initialize context management components
         self.data_collector = DataCollector(self.api_client)
@@ -245,6 +247,39 @@ class LucidePipeline:
         intent: IntentResult = await self.intent_agent.run(user_message, context=context)
         intent_latency = time.perf_counter() - intent_start
 
+        # Step 1b: Context resolution (best-effort)
+        resolved_context = context
+        if self.context_resolver:
+            if status_callback:
+                status_callback("context", "Resolution du contexte...")
+            resolution = await self.context_resolver.resolve(
+                user_message,
+                intent,
+                language=language,
+                existing_context=context,
+            )
+            if resolution and resolution.clarification_question:
+                analysis = AnalysisResult(
+                    brief="Clarification requested.",
+                    data_points=[],
+                    gaps=["clarification"],
+                    safety_notes=[],
+                )
+                return {
+                    "intent": intent,
+                    "tool_results": [],
+                    "analysis": analysis,
+                    "answer": resolution.clarification_question,
+                    "context": resolution.context or context,
+                    "needs_clarification": True,
+                }
+            if resolution:
+                resolved_context = resolution.context or context
+                if resolution.entities:
+                    intent.entities.update(resolution.entities)
+
+        context = resolved_context
+
         # Enrichir les entities avec le contexte si disponible
         if context:
             # Inject fixture_id/match_id into entities if not already present
@@ -268,6 +303,20 @@ class LucidePipeline:
             # Inject season if not already present
             if "season" in context and "season" not in intent.entities:
                 intent.entities["season"] = context["season"]
+
+            # Inject home/away team ids if available
+            if "home_team_id" in context and "home_team_id" not in intent.entities:
+                intent.entities["home_team_id"] = context["home_team_id"]
+            if "away_team_id" in context and "away_team_id" not in intent.entities:
+                intent.entities["away_team_id"] = context["away_team_id"]
+
+            # Inject team names if missing
+            if "team1_name" in context and "home_team" not in intent.entities:
+                intent.entities["home_team"] = context["team1_name"]
+            if "team2_name" in context and "away_team" not in intent.entities:
+                intent.entities["away_team"] = context["team2_name"]
+            if "team_name" in context and "team" not in intent.entities:
+                intent.entities["team"] = context["team_name"]
 
             logger.info(f"Intent detected: {intent.intent} (needs_data={intent.needs_data}, confidence={intent.confidence})")
             logger.info(f"Entities after context enrichment: {intent.entities}")
@@ -382,6 +431,7 @@ class LucidePipeline:
             "tool_results": tool_results,
             "analysis": analysis,
             "answer": final_answer,
+            "context": context,
         }
 
     async def close(self):

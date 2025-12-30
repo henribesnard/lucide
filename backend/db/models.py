@@ -1,11 +1,46 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Boolean, Column, DateTime, String, Text, ForeignKey, Integer, Enum, Index, JSON
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Boolean, Column, DateTime, String, Text, ForeignKey, Integer, Enum, Index, JSON, TypeDecorator, CHAR
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import relationship
 import enum
 
 from backend.db.database import Base
+
+
+class GUID(TypeDecorator):
+    """Platform-independent GUID type.
+
+    Uses PostgreSQL's UUID type, otherwise uses CHAR(36), storing as stringified hex values.
+    """
+    impl = CHAR
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(PG_UUID(as_uuid=True))
+        else:
+            return dialect.type_descriptor(CHAR(36))
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return value
+        elif dialect.name == 'postgresql':
+            return str(value) if not isinstance(value, uuid.UUID) else value
+        else:
+            if not isinstance(value, uuid.UUID):
+                return str(uuid.UUID(value))
+            else:
+                return str(value)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return value
+        else:
+            if not isinstance(value, uuid.UUID):
+                return uuid.UUID(value)
+            else:
+                return value
 
 
 class SubscriptionTier(str, enum.Enum):
@@ -25,11 +60,18 @@ class SubscriptionStatus(str, enum.Enum):
 class User(Base):
     __tablename__ = "users"
 
-    user_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    email = Column(String(255), unique=True, index=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
+    user_id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    email = Column(String(255), unique=True, index=True, nullable=True)
+    password_hash = Column(String(255), nullable=True)
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
+
+    # Telegram fields
+    telegram_id = Column(Integer, unique=True, index=True, nullable=True)
+    telegram_username = Column(String(255), nullable=True)
+    telegram_first_name = Column(String(255), nullable=True)
+    telegram_last_name = Column(String(255), nullable=True)
+    telegram_language_code = Column(String(10), nullable=True)
 
     is_active = Column(Boolean, default=False, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
@@ -66,8 +108,8 @@ class User(Base):
 class Conversation(Base):
     __tablename__ = "conversations"
 
-    conversation_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False)
+    conversation_id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    user_id = Column(GUID, ForeignKey("users.user_id"), nullable=False)
 
     title = Column(String(255), nullable=True)
 
@@ -88,8 +130,8 @@ class Conversation(Base):
 class Message(Base):
     __tablename__ = "messages"
 
-    message_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    conversation_id = Column(UUID(as_uuid=True), ForeignKey("conversations.conversation_id"), nullable=False)
+    message_id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    conversation_id = Column(GUID, ForeignKey("conversations.conversation_id"), nullable=False)
 
     role = Column(String(50), nullable=False)  # 'user' or 'assistant'
     content = Column(Text, nullable=False)
@@ -111,7 +153,7 @@ class MatchAnalysis(Base):
     __tablename__ = "match_analyses"
 
     # Clé primaire
-    analysis_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    analysis_id = Column(GUID, primary_key=True, default=uuid.uuid4)
 
     # Identification du match
     fixture_id = Column(Integer, unique=True, nullable=False, index=True)
@@ -154,10 +196,10 @@ class MatchAnalysis(Base):
 class MatchAnalysisAccess(Base):
     __tablename__ = "match_analysis_accesses"
 
-    access_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    analysis_id = Column(UUID(as_uuid=True), ForeignKey("match_analyses.analysis_id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
-    conversation_id = Column(UUID(as_uuid=True), ForeignKey("conversations.conversation_id", ondelete="SET NULL"), nullable=True)
+    access_id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    analysis_id = Column(GUID, ForeignKey("match_analyses.analysis_id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(GUID, ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
+    conversation_id = Column(GUID, ForeignKey("conversations.conversation_id", ondelete="SET NULL"), nullable=True)
     accessed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships

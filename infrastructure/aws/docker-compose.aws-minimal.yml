@@ -1,0 +1,118 @@
+version: '3.8'
+
+# Docker Compose pour AWS EC2 t3a.small (2 GB RAM)
+# Configuration optimisée pour production légère
+
+services:
+  # PostgreSQL - Base de données
+  postgres:
+    image: postgres:15-alpine  # Alpine = plus léger
+    container_name: lucide_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: lucide
+      POSTGRES_USER: lucide_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme_in_production}
+      # Optimisations pour 2 GB RAM
+      POSTGRES_SHARED_BUFFERS: 256MB
+      POSTGRES_WORK_MEM: 8MB
+      POSTGRES_MAINTENANCE_WORK_MEM: 128MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 512MB
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - lucide_network
+    # Limite mémoire pour t3a.small (2 GB)
+    mem_limit: 512m
+    mem_reservation: 256m
+
+  # Redis - Cache
+  redis:
+    image: redis:7-alpine
+    container_name: lucide_redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    networks:
+      - lucide_network
+    mem_limit: 128m
+    mem_reservation: 64m
+
+  # Backend FastAPI
+  backend:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    container_name: lucide_backend
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://lucide_user:${DB_PASSWORD:-changeme_in_production}@postgres:5432/lucide
+      - REDIS_URL=redis://redis:6379
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - FOOTBALL_API_KEY=${FOOTBALL_API_KEY}
+      - SECRET_KEY=${SECRET_KEY:-change-this-secret-key}
+      - JWT_SECRET=${JWT_SECRET:-change-this-jwt-secret}
+      - LLM_PROVIDER=deepseek
+      - ENABLE_REDIS_CACHE=true
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - lucide_network
+    mem_limit: 384m
+    mem_reservation: 256m
+    volumes:
+      - ./logs:/app/logs
+
+  # Bot Telegram
+  telegram_bot:
+    build:
+      context: ../../backend/telegram
+      dockerfile: Dockerfile
+    container_name: lucide_telegram_bot
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - DATABASE_URL=postgresql://lucide_user:${DB_PASSWORD:-changeme_in_production}@postgres:5432/lucide
+      - REDIS_URL=redis://redis:6379
+      - BACKEND_BASE_URL=http://backend:8000
+      - TELEGRAM_WEBHOOK_URL=${TELEGRAM_WEBHOOK_URL:-}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    depends_on:
+      - postgres
+      - redis
+      - backend
+    networks:
+      - lucide_network
+    mem_limit: 256m
+    mem_reservation: 128m
+
+  # Nginx - Reverse Proxy (optionnel mais recommandé)
+  nginx:
+    image: nginx:alpine
+    container_name: lucide_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+    networks:
+      - lucide_network
+    mem_limit: 64m
+    mem_reservation: 32m
+
+networks:
+  lucide_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
