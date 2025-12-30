@@ -58,6 +58,7 @@ services:
       - JWT_SECRET=${JWT_SECRET:-change-this-jwt-secret}
       - LLM_PROVIDER=deepseek
       - ENABLE_REDIS_CACHE=true
+      - CORS_ORIGIN_REGEX=^http://localhost(:\d+)?$|^http://127\.0\.0\.1(:\d+)?$
     ports:
       - "8000:8000"
     depends_on:
