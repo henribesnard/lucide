@@ -41,6 +41,8 @@ CREATE TABLE IF NOT EXISTS conversations (
     context_team_id INTEGER,
     context_player_id INTEGER,
     is_active BOOLEAN DEFAULT TRUE,
+    is_archived BOOLEAN DEFAULT FALSE,
+    is_deleted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -48,6 +50,8 @@ CREATE TABLE IF NOT EXISTS conversations (
 -- Index pour optimiser les recherches
 CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_is_active ON conversations(is_active);
+CREATE INDEX IF NOT EXISTS idx_conversations_is_archived ON conversations(is_archived);
+CREATE INDEX IF NOT EXISTS idx_conversations_is_deleted ON conversations(is_deleted);
 CREATE INDEX IF NOT EXISTS idx_conversations_created_at ON conversations(created_at DESC);
 
 -- Table: messages
