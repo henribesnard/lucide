@@ -602,9 +602,9 @@ class DataCollector:
             return []
 
     async def _get_sidelined(self, team_id: int) -> List[Dict[str, Any]]:
-        """Recupere les suspensions."""
+        """Recupere les absences (injuries) pour une equipe."""
         try:
-            data = await self.api.get_sidelined(team_id=team_id)
+            data = await self.api.get_injuries(team_id=team_id)
             self.api_call_count += 1
             return data if data else []
         except Exception as e:

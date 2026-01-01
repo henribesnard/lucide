@@ -346,9 +346,10 @@ class LucidePipeline:
                 "head_to_head",
             }
             available = {tr.name for tr in tool_results}
-            missing = required_tools - available
-            if missing:
-                logger.warning(f"analyse_rencontre: missing critical data from tools: {sorted(missing)}")
+            if "analyze_match" not in available:
+                missing = required_tools - available
+                if missing:
+                    logger.warning(f"analyse_rencontre: missing critical data from tools: {sorted(missing)}")
 
         # Override LLM based on model_type parameter
         selected_llm = self._get_llm_for_model_type(model_type)

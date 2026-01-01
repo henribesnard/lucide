@@ -15,6 +15,7 @@ from backend.db.database import init_db, get_db, SessionLocal
 from backend.auth.router import router as auth_router
 from backend.conversations.router import router as conversations_router
 from backend.services.match_analysis.router import router as match_analysis_router
+from backend.analyzers.router import router as analyzers_router
 from backend.context.context_manager import ContextManager
 from backend.context.circuit_breaker import circuit_breaker_manager
 from backend.auth.dependencies import get_current_user, get_current_admin_user
@@ -62,6 +63,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(conversations_router)
 app.include_router(match_analysis_router)
+app.include_router(analyzers_router)
 
 sessions: Dict[str, LucidePipeline] = {}
 football_client: Optional[FootballAPIClient] = None

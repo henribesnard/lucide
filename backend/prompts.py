@@ -66,19 +66,10 @@ REGLE CRITIQUE POUR STATISTIQUES DE MATCH (stats_live, stats_final):
 - Sequence: 1) search_team x2, 2) fixtures_search pour obtenir fixture_id, 3) fixture_statistics avec le fixture_id.
 
 REGLE CRITIQUE POUR ANALYSE DE MATCH:
-- Si l'intent est "analyse_rencontre", NE retourne pas finish_reason='stop' tant que tu n'as pas collecte:
-  1) les 2 equipes (search_team x2), 2) la fixture (fixtures_search ou fixtures_by_date),
-  3) le type de ligue (league_type pour savoir si Cup ou League),
-  4) la forme recente (team_form_stats ET team_last_fixtures pour chaque equipe),
-  5) le classement (standings si League, fixture_rounds si Cup),
-  6) les confrontations directes (head_to_head),
-  7) les statistiques saison (team_statistics pour chaque equipe si disponible),
-  8) les joueurs cles (top_scorers, top_assists de la ligue),
-  9) les compositions (fixture_lineups du match ou des derniers matchs),
-  10) les blessures/absents (injuries),
-  11) les stats joueurs recentes (fixture_players des derniers matchs).
-- Continue en plusieurs iterations si besoin. Si un batch ne couvre pas tout, relance un batch.
-- Alternative rapide si fixture_id est connu: utiliser analyze_match(fixture_id) qui collecte tout avec cache.
+- Si l'intent est "analyse_rencontre", utiliser analyze_match des que fixture_id est connu.
+- Sequence: 1) search_team x2 (si besoin), 2) fixtures_search/fixtures_by_date pour obtenir fixture_id,
+  3) analyze_match(fixture_id) pour l'analyse globale (tous les analyzers).
+- Eviter les autres tools si analyze_match est disponible.
 
 NOUVEAUX TOOLS DISPONIBLES:
 - league_type: determine si une ligue est une "Cup" ou une "League". CRITIQUE pour savoir si on doit parler de classement ou de phase de groupe.
@@ -94,7 +85,9 @@ Consignes generales:
 Guidelines specifiques (doc Intentions v1):
 - calendrier_matchs: si la league est floue ("premiere division en Allemagne"), mapper {pays + division} -> league_id ou demander precision. Defaut date = aujourd'hui, season = saison en cours. Appeler fixtures_by_date avec date, league_id, season et status si fourni. Si plusieurs ligues possibles, demander clarification.
 - stats_live/stats_final: INSTRUCTION CRITIQUE: 1) search_team equipe1, 2) search_team equipe2, 3) fixtures_search pour obtenir fixture_id, 4) OBLIGATOIREMENT appeler fixture_statistics avec le fixture_id obtenu. NE PAS utiliser head_to_head ou autres endpoints pour les statistiques.
-- analyse_rencontre: INSTRUCTION CRITIQUE par etapes: 1) search_team equipe1, 2) search_team equipe2, 3) fixtures_search/fixtures_by_date pour trouver la fixture, 4) team_last_fixtures x2, 5) standings, 6) head_to_head, 7) team_statistics x2. Ensuite seulement, ajoute injuries/lineups/fixture_statistics/predictions/odds si pertinents. Ne t'arrete pas avant d'avoir fait les etapes 1-7.
+- analyse_rencontre: INSTRUCTION CRITIQUE: 1) search_team equipe1, 2) search_team equipe2,
+  3) fixtures_search/fixtures_by_date pour trouver la fixture,
+  4) analyze_match(fixture_id) pour l'analyse globale.
 - detail_fixture/chronologie/compo/stats_match: si fixture_id fourni, enchaine fixture_events + fixture_lineups + fixture_statistics + fixture_players selon la demande.
 - stats_equipe_saison: resoudre l'equipe (search_team) puis appeler team_statistics avec team_id, league_id et season (defaut saison en cours). depth est ignore aujourd'hui.
 - stats_joueur: resoudre le joueur (search_player), utiliser season actuelle si absente, puis appeler players (tool search_player suffit ici) pour recuperer les stats globales. Si paging indique d'autres pages, signale-le dans la note.

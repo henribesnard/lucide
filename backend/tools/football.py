@@ -384,7 +384,7 @@ TOOL_DEFINITIONS: List[Dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "analyze_match",
-            "description": "Analyse complete d'un match pour les paris sportifs. Collecte toutes les donnees necessaires (25 appels API la premiere fois, 0 ensuite grace au cache) et analyse 8 types de paris: 1X2, buts, tirs, corners, cartons equipe, carton joueur, buteur, passeur. IMPORTANT: Utilise ce tool pour toute question d'analyse de match au lieu des tools classiques.",
+            "description": "Analyse globale d'un match via les analyzers (tous les paris). Collecte toutes les donnees necessaires (25+ appels API la premiere fois, 0 ensuite grace au cache) et retourne toutes les analyses: 1X2, buts, tirs, corners, cartons equipe, carton joueur, buteur, passeur. IMPORTANT: Utilise ce tool pour toute question d'analyse de match au lieu des tools classiques.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -396,6 +396,11 @@ TOOL_DEFINITIONS: List[Dict[str, Any]] = [
                         "type": "string",
                         "description": "Type de pari specifique (optionnel): 1x2, goals, shots, corners, cards_team, card_player, scorer, assister. Si absent, retourne un resume de toutes les analyses.",
                         "enum": ["1x2", "goals", "shots", "corners", "cards_team", "card_player", "scorer", "assister"]
+                    },
+                    "force_refresh": {
+                        "type": "boolean",
+                        "description": "Ignore le cache et relance la collecte/analyses si true.",
+                        "default": False
                     }
                 },
                 "required": ["fixture_id"],

@@ -3,6 +3,7 @@ Base Analyzer - Abstract class for all bet type analyzers
 """
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List
+from datetime import datetime
 import logging
 
 from backend.store.schemas import BetAnalysisData
@@ -107,6 +108,15 @@ class BaseAnalyzer(ABC):
             sources.append("top_assists")
         if raw_data.get("top_yellow") or raw_data.get("top_red"):
             sources.append("top_cards")
+        if (
+            raw_data.get("team1_recent_fixtures")
+            or raw_data.get("team2_recent_fixtures")
+            or raw_data.get("team1_recent_fixtures_league")
+            or raw_data.get("team2_recent_fixtures_league")
+        ):
+            sources.append("recent_fixtures")
+        if raw_data.get("recent_fixture_stats"):
+            sources.append("recent_fixture_stats")
 
         return sources
 
@@ -134,3 +144,113 @@ class BaseAnalyzer(ABC):
             return result
         except (KeyError, TypeError, AttributeError):
             return default
+
+    def _extract_team_matches(self, fixtures: List[Dict[str, Any]], team_id: int) -> List[Dict[str, Any]]:
+        """Extract finished matches for a team with result and goals."""
+        if not fixtures or not team_id:
+            return []
+
+        matches = []
+        for fixture in fixtures:
+            teams = fixture.get("teams") or {}
+            home = teams.get("home") or {}
+            away = teams.get("away") or {}
+            home_id = home.get("id")
+            away_id = away.get("id")
+
+            if team_id not in (home_id, away_id):
+                continue
+
+            goals = fixture.get("goals") or {}
+            home_goals = goals.get("home")
+            away_goals = goals.get("away")
+            if home_goals is None or away_goals is None:
+                continue
+
+            status = self._safe_get(fixture, "fixture", "status", "short")
+            if status and status not in ["FT", "AET", "PEN"]:
+                continue
+
+            is_home = team_id == home_id
+            goals_for = home_goals if is_home else away_goals
+            goals_against = away_goals if is_home else home_goals
+
+            if goals_for > goals_against:
+                result = "W"
+            elif goals_for == goals_against:
+                result = "D"
+            else:
+                result = "L"
+
+            timestamp = self._safe_get(fixture, "fixture", "timestamp")
+            if timestamp is None:
+                date_str = self._safe_get(fixture, "fixture", "date")
+                if date_str:
+                    try:
+                        timestamp = int(datetime.fromisoformat(date_str).timestamp())
+                    except (TypeError, ValueError):
+                        timestamp = 0
+                else:
+                    timestamp = 0
+
+            matches.append({
+                "fixture_id": self._safe_get(fixture, "fixture", "id"),
+                "timestamp": timestamp,
+                "result": result,
+                "goals_for": goals_for,
+                "goals_against": goals_against,
+                "home_away": "home" if is_home else "away",
+                "league_id": self._safe_get(fixture, "league", "id")
+            })
+
+        matches.sort(key=lambda m: m.get("timestamp") or 0, reverse=True)
+        return matches
+
+    def _current_streak(self, sequence: List[Any]) -> Dict[str, Any]:
+        """Return current streak value and length from a sequence."""
+        if not sequence:
+            return {"value": None, "length": 0}
+
+        first = sequence[0]
+        length = 0
+        for item in sequence:
+            if item == first:
+                length += 1
+            else:
+                break
+
+        return {"value": first, "length": length}
+
+    def _summarize_result_sequence(self, sequence: List[str]) -> Dict[str, Any]:
+        """Summarize a W/D/L sequence."""
+        if not sequence:
+            return {
+                "matches": 0,
+                "sequence": "",
+                "current_streak": {"value": None, "length": 0},
+                "wins": 0,
+                "draws": 0,
+                "losses": 0
+            }
+
+        return {
+            "matches": len(sequence),
+            "sequence": "".join(sequence),
+            "current_streak": self._current_streak(sequence),
+            "wins": sequence.count("W"),
+            "draws": sequence.count("D"),
+            "losses": sequence.count("L")
+        }
+
+    def _summarize_boolean_sequence(self, sequence: List[bool]) -> Dict[str, Any]:
+        """Summarize a boolean sequence with streaks and counts."""
+        if not sequence:
+            return {"matches": 0, "true": 0, "false": 0, "current_streak": {"value": None, "length": 0}}
+
+        true_count = sum(1 for value in sequence if value)
+        return {
+            "matches": len(sequence),
+            "true": true_count,
+            "false": len(sequence) - true_count,
+            "current_streak": self._current_streak(sequence)
+        }

@@ -30,13 +30,24 @@ class BetGoalsAnalyzer(BaseAnalyzer):
         h2h = raw_data.get("h2h_history") or []
         team1_stats = raw_data.get("team1_stats") or {}
         team2_stats = raw_data.get("team2_stats") or {}
+        fixture = raw_data.get("fixture") or {}
+        recent_limit = raw_data.get("recent_fixtures_last_n")
+
+        home_id = self._safe_get(fixture, "teams", "home", "id")
+        away_id = self._safe_get(fixture, "teams", "away", "id")
 
         return {
             "average_goals": self._analyze_avg_goals(pred, team1_stats, team2_stats),
             "over_under": self._analyze_over_under(pred),
             "btts": self._analyze_btts(pred),
             "clean_sheets": self._analyze_clean_sheets(team1_stats, team2_stats),
-            "h2h_goals": self._analyze_h2h_goals(h2h)
+            "h2h_goals": self._analyze_h2h_goals(h2h),
+            "goal_series": self._analyze_goal_series(
+                raw_data,
+                home_id,
+                away_id,
+                recent_limit
+            )
         }
 
     def _analyze_avg_goals(self, pred: dict, team1_stats: dict, team2_stats: dict) -> dict:
@@ -137,3 +148,65 @@ class BetGoalsAnalyzer(BaseAnalyzer):
             return float(a) + float(b)
         except (TypeError, ValueError):
             return None
+
+    def _analyze_goal_series(
+        self,
+        raw_data: Dict[str, Any],
+        home_id: int,
+        away_id: int,
+        recent_limit: int
+    ) -> dict:
+        """Analyze scoring and clean sheet streaks from recent fixtures."""
+        if not home_id or not away_id:
+            return {}
+
+        limit = recent_limit or 5
+
+        team1_recent = raw_data.get("team1_recent_fixtures") or []
+        team2_recent = raw_data.get("team2_recent_fixtures") or []
+        team1_recent_league = raw_data.get("team1_recent_fixtures_league") or []
+        team2_recent_league = raw_data.get("team2_recent_fixtures_league") or []
+
+        return {
+            "home": {
+                "all_competitions": self._build_goal_series_bundle(team1_recent, home_id, limit),
+                "league": self._build_goal_series_bundle(team1_recent_league, home_id, limit)
+            },
+            "away": {
+                "all_competitions": self._build_goal_series_bundle(team2_recent, away_id, limit),
+                "league": self._build_goal_series_bundle(team2_recent_league, away_id, limit)
+            }
+        }
+
+    def _build_goal_series_bundle(self, fixtures: list, team_id: int, limit: int) -> dict:
+        """Build goal-related streaks for overall/home/away splits."""
+        matches = self._extract_team_matches(fixtures, team_id)
+        if not matches:
+            return {}
+
+        overall = matches[:limit]
+        home_matches = [m for m in matches if m["home_away"] == "home"][:limit]
+        away_matches = [m for m in matches if m["home_away"] == "away"][:limit]
+
+        return {
+            "overall": self._summarize_goal_series(overall),
+            "home": self._summarize_goal_series(home_matches),
+            "away": self._summarize_goal_series(away_matches)
+        }
+
+    def _summarize_goal_series(self, matches: list) -> dict:
+        """Summarize scoring, conceding, and clean sheet streaks."""
+        if not matches:
+            return {}
+
+        scored = [m["goals_for"] > 0 for m in matches]
+        conceded = [m["goals_against"] > 0 for m in matches]
+        clean_sheet = [m["goals_against"] == 0 for m in matches]
+        failed_to_score = [m["goals_for"] == 0 for m in matches]
+
+        return {
+            "scored": self._summarize_boolean_sequence(scored),
+            "conceded": self._summarize_boolean_sequence(conceded),
+            "clean_sheet": self._summarize_boolean_sequence(clean_sheet),
+            "failed_to_score": self._summarize_boolean_sequence(failed_to_score)
+        }

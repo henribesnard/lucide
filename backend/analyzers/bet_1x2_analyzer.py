@@ -30,6 +30,7 @@ class Bet1X2Analyzer(BaseAnalyzer):
         h2h = raw_data.get("h2h_history") or []
         standings = raw_data.get("standings")
         fixture = raw_data.get("fixture") or {}
+        recent_limit = raw_data.get("recent_fixtures_last_n")
 
         home_id = self._safe_get(fixture, "teams", "home", "id")
         away_id = self._safe_get(fixture, "teams", "away", "id")
@@ -39,7 +40,14 @@ class Bet1X2Analyzer(BaseAnalyzer):
             "h2h_stats": self._analyze_h2h(h2h, home_id, away_id),
             "standings_gap": self._analyze_standings(standings, home_id, away_id),
             "home_advantage": self._analyze_home_advantage(pred),
-            "prediction_api": self._extract_prediction(pred)
+            "prediction_api": self._extract_prediction(pred),
+            "result_streaks": self._analyze_result_streaks(
+                raw_data,
+                pred,
+                home_id,
+                away_id,
+                recent_limit
+            )
         }
 
     def _analyze_form(self, pred: dict) -> dict:
@@ -188,3 +196,72 @@ class Bet1X2Analyzer(BaseAnalyzer):
             "lose_percent": percent.get("away"),
             "advice": predictions.get("advice")
         }
+
+    def _analyze_result_streaks(
+        self,
+        raw_data: Dict[str, Any],
+        pred: dict,
+        home_id: int,
+        away_id: int,
+        recent_limit: int
+    ) -> dict:
+        """Analyze current W/D/L streaks across recent fixtures."""
+        if not home_id or not away_id:
+            return {}
+
+        limit = recent_limit or 5
+
+        team1_recent = raw_data.get("team1_recent_fixtures") or []
+        team2_recent = raw_data.get("team2_recent_fixtures") or []
+        team1_recent_league = raw_data.get("team1_recent_fixtures_league") or []
+        team2_recent_league = raw_data.get("team2_recent_fixtures_league") or []
+
+        home_league_form = self._safe_get(pred, "teams", "home", "league", "form")
+        away_league_form = self._safe_get(pred, "teams", "away", "league", "form")
+
+        return {
+            "home": {
+                "all_competitions": self._build_result_series_bundle(team1_recent, home_id, limit),
+                "league": self._build_result_series_bundle(team1_recent_league, home_id, limit, home_league_form)
+            },
+            "away": {
+                "all_competitions": self._build_result_series_bundle(team2_recent, away_id, limit),
+                "league": self._build_result_series_bundle(team2_recent_league, away_id, limit, away_league_form)
+            }
+        }
+
+    def _build_result_series_bundle(
+        self,
+        fixtures: list,
+        team_id: int,
+        limit: int,
+        form_fallback: str = None
+    ) -> dict:
+        """Build result streaks for overall/home/away splits."""
+        matches = self._extract_team_matches(fixtures, team_id)
+        if not matches and form_fallback:
+            return {"overall": self._summarize_form_string(form_fallback)}
+        if not matches:
+            return {}
+
+        overall_sequence = [m["result"] for m in matches[:limit]]
+        home_sequence = [m["result"] for m in matches if m["home_away"] == "home"][:limit]
+        away_sequence = [m["result"] for m in matches if m["home_away"] == "away"][:limit]
+
+        return {
+            "overall": self._summarize_result_sequence(overall_sequence),
+            "home": self._summarize_result_sequence(home_sequence),
+            "away": self._summarize_result_sequence(away_sequence)
+        }
+
+    def _summarize_form_string(self, form: str) -> dict:
+        """Summarize a form string when fixtures are not available."""
+        if not form:
+            return {}
+
+        sequence = list(form.strip())
+        if not sequence:
+            return {}
+
+        sequence.reverse()
+        return self._summarize_result_sequence(sequence)

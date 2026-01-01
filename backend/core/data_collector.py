@@ -7,7 +7,7 @@ Follows the workflow from Structure_Analyse_Match_Lucide.md:
 3. h2h details (statistics, players, events, lineups)
 4. complementary data (standings, team stats, injuries, top players)
 
-Total: ~25 API calls per match
+Total: ~25+ API calls per match (more when collecting series data)
 """
 import asyncio
 import logging
@@ -17,6 +17,7 @@ from datetime import datetime
 from backend.api.football_api import FootballAPIClient
 
 logger = logging.getLogger(__name__)
+RECENT_MATCHES_LIMIT = 5
 
 
 class DataCollector:
@@ -80,6 +81,15 @@ class DataCollector:
             season=season
         )
 
+        # 6. Recent fixtures/stats for series insights
+        recent_series = await self._collect_recent_series_data(
+            team1_id=team1_id,
+            team2_id=team2_id,
+            league_id=league_id,
+            season=season,
+            last_n=RECENT_MATCHES_LIMIT
+        )
+
         logger.info(f"Data collection complete: {self.api_calls_count} API calls")
 
         return {
@@ -88,6 +98,7 @@ class DataCollector:
             "h2h_history": h2h_history or [],
             "h2h_details": h2h_details,
             **complementary,
+            **recent_series,
             "api_calls_count": self.api_calls_count,
             "collected_at": datetime.utcnow().isoformat()
         }
@@ -185,14 +196,6 @@ class DataCollector:
                 "injuries_t2"
             ),
             self._safe_call(
-                self.api.get_sidelined(team_id=team1_id),
-                "sidelined_t1"
-            ),
-            self._safe_call(
-                self.api.get_sidelined(team_id=team2_id),
-                "sidelined_t2"
-            ),
-            self._safe_call(
                 self.api.get_top_scorers(league_id, season),
                 "top_scorers"
             ),
@@ -217,8 +220,6 @@ class DataCollector:
             team2_stats,
             injuries_t1,
             injuries_t2,
-            sidelined_t1,
-            sidelined_t2,
             top_scorers,
             top_assists,
             top_yellow,
@@ -233,10 +234,6 @@ class DataCollector:
             injuries.extend(injuries_t2)
 
         sidelined = []
-        if sidelined_t1 and not isinstance(sidelined_t1, Exception):
-            sidelined.extend(sidelined_t1)
-        if sidelined_t2 and not isinstance(sidelined_t2, Exception):
-            sidelined.extend(sidelined_t2)
 
         return {
             "standings": standings if not isinstance(standings, Exception) else None,
@@ -248,6 +245,77 @@ class DataCollector:
             "top_assists": top_assists if not isinstance(top_assists, Exception) else [],
             "top_yellow": top_yellow if not isinstance(top_yellow, Exception) else [],
             "top_red": top_red if not isinstance(top_red, Exception) else []
+        }
+
+    async def _collect_recent_series_data(
+        self,
+        team1_id: int,
+        team2_id: int,
+        league_id: int,
+        season: int,
+        last_n: int
+    ) -> Dict[str, Any]:
+        """
+        Collect recent fixtures and stats to compute streak series.
+        """
+        team1_recent = await self._safe_call(
+            self.api.get_fixtures(team_id=team1_id, last=last_n),
+            "team1_recent_fixtures"
+        )
+        team2_recent = await self._safe_call(
+            self.api.get_fixtures(team_id=team2_id, last=last_n),
+            "team2_recent_fixtures"
+        )
+
+        team1_recent_league = await self._safe_call(
+            self.api.get_fixtures(team_id=team1_id, league_id=league_id, season=season, last=last_n),
+            "team1_recent_fixtures_league"
+        )
+        team2_recent_league = await self._safe_call(
+            self.api.get_fixtures(team_id=team2_id, league_id=league_id, season=season, last=last_n),
+            "team2_recent_fixtures_league"
+        )
+
+        fixture_ids = set()
+        for fixture in (team1_recent or []):
+            fixture_id = (fixture.get("fixture") or {}).get("id")
+            if fixture_id:
+                fixture_ids.add(fixture_id)
+        for fixture in (team2_recent or []):
+            fixture_id = (fixture.get("fixture") or {}).get("id")
+            if fixture_id:
+                fixture_ids.add(fixture_id)
+        for fixture in (team1_recent_league or []):
+            fixture_id = (fixture.get("fixture") or {}).get("id")
+            if fixture_id:
+                fixture_ids.add(fixture_id)
+        for fixture in (team2_recent_league or []):
+            fixture_id = (fixture.get("fixture") or {}).get("id")
+            if fixture_id:
+                fixture_ids.add(fixture_id)
+
+        stats_by_fixture: Dict[int, Any] = {}
+        fixture_id_list = list(fixture_ids)
+        if fixture_id_list:
+            stats_tasks = [
+                self._safe_call(
+                    self.api.get_fixture_statistics(fixture_id),
+                    f"recent_stats_{fixture_id}"
+                )
+                for fixture_id in fixture_id_list
+            ]
+            stats_results = await asyncio.gather(*stats_tasks)
+            for fixture_id, stats in zip(fixture_id_list, stats_results):
+                if stats:
+                    stats_by_fixture[fixture_id] = stats
+
+        return {
+            "team1_recent_fixtures": team1_recent or [],
+            "team2_recent_fixtures": team2_recent or [],
+            "team1_recent_fixtures_league": team1_recent_league or [],
+            "team2_recent_fixtures_league": team2_recent_league or [],
+            "recent_fixture_stats": stats_by_fixture,
+            "recent_fixtures_last_n": last_n
         }
 
     async def _safe_call(self, coro, call_name: str):

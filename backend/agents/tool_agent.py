@@ -113,6 +113,12 @@ class ToolAgent:
         logger.info(f"Entities: {intent.entities}")
 
         available_tools = {tr.name for tr in tool_results}
+        use_global_analyzer = intent.intent in {"analyse_rencontre", "match_analysis"} and self.context_agent
+
+        if use_global_analyzer and "analyze_match" in available_tools:
+            logger.info("Global analyzers already executed; skipping other forced tools.")
+            return tool_results
+
         required = {
             "fixtures_search",
             "team_last_fixtures",
@@ -254,6 +260,40 @@ class ToolAgent:
                 )
             )
             available_tools.add("fixtures_search")
+
+        if use_global_analyzer and fixture_id:
+            try:
+                context_data = await self.context_agent.get_match_context(fixture_id)
+                context = context_data["context"]
+                analyses_payload = {}
+                for bet_type, analysis in context.analyses.items():
+                    analyses_payload[bet_type] = {
+                        "indicators": analysis.indicators,
+                        "coverage_complete": analysis.coverage_complete,
+                        "data_sources": analysis.data_sources,
+                    }
+
+                tool_results.append(
+                    ToolCallResult(
+                        name="analyze_match",
+                        arguments={"fixture_id": fixture_id},
+                        output={
+                            "fixture_id": fixture_id,
+                            "match": f"{context.home_team} vs {context.away_team}",
+                            "league": context.league,
+                            "date": str(context.date) if context.date else None,
+                            "status": context.status,
+                            "analyses": analyses_payload,
+                            "source": context_data["source"],
+                            "api_calls": context_data["api_calls"],
+                        },
+                        error=None,
+                    )
+                )
+                logger.info("Global analyzers executed via analyze_match; skipping other forced tools.")
+                return tool_results
+            except Exception as exc:
+                logger.warning("Global analyzers failed: %s", exc)
 
         # Si on a un fixture_id, on peut continuer même sans teams (on les récupérera du fixture)
         if len(team_ids) < 2 and not fixture_id:
@@ -750,7 +790,10 @@ class ToolAgent:
                         return {"error": "fixture_id is required for analyze_match"}
 
                     try:
-                        context_data = await self.context_agent.get_match_context(fixture_id)
+                        context_data = await self.context_agent.get_match_context(
+                            fixture_id,
+                            force_refresh=bool(arguments.get("force_refresh", False))
+                        )
                         context = context_data["context"]
 
                         if bet_type:
@@ -767,13 +810,20 @@ class ToolAgent:
                                 }
                             return {"error": f"Bet type '{bet_type}' not found"}
 
+                        analyses_payload = {}
+                        for atype, analysis in context.analyses.items():
+                            analyses_payload[atype] = {
+                                "indicators": analysis.indicators,
+                                "coverage_complete": analysis.coverage_complete,
+                                "data_sources": analysis.data_sources,
+                            }
                         return {
                             "fixture_id": fixture_id,
                             "match": f"{context.home_team} vs {context.away_team}",
                             "league": context.league,
                             "date": str(context.date) if context.date else None,
                             "status": context.status,
-                            "available_analyses": list(context.analyses.keys()),
+                            "analyses": analyses_payload,
                             "source": context_data["source"],
                             "api_calls": context_data["api_calls"],
                         }
@@ -978,11 +1028,9 @@ class ToolAgent:
                 "Appelle fixtures_by_date ou fixtures_search avec league_id/date/season/status quand dispo."
             ),
             "analyse_rencontre": (
-                "Identifie les 2 equipes (search_team) puis la fixture cible (fixtures_search/fixtures_by_date). "
-                "Ensuite, collecte un bouquet complet: team_last_fixtures pour chaque equipe (forme recente), standings (classement), "
-                "team_statistics pour chaque equipe, head_to_head (confrontations), injuries (blesses/suspendus), "
-                "fixture_lineups et fixture_statistics si fixture_id connu, et predictions/odds si pertinent. "
-                "Ne te contente pas d'un seul appel: enchaine les tool_calls necessaires dans la meme reponse."
+                "Identifie les 2 equipes (search_team) puis la fixture cible (fixtures_search/fixtures_by_date) "
+                "pour obtenir fixture_id. Ensuite, appelle analyze_match pour une analyse globale (tous les analyzers). "
+                "Evite d'appeler d'autres tools si analyze_match est disponible."
             ),
             "stats_equipe_saison": (
                 "Resous team -> team_id via search_team puis appelle team_statistics avec league_id + season (defaut saison actuelle)."
@@ -1150,3 +1198,4 @@ class ToolAgent:
         tool_results = await self._force_player_stats_tools(context, tool_results)
 
         return tool_results, assistant_notes
+
