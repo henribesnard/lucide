@@ -97,8 +97,9 @@ def generate_conversation_title(message: str, context: Optional[Dict[str, Any]] 
     elif "league_name" in context:
         league_name = context["league_name"]
         # Shorten league names
-        league_name = league_name.replace("Premier League", "EPL")
-        title_parts.append(league_name)
+        if league_name:
+            league_name = league_name.replace("Premier League", "EPL")
+            title_parts.append(league_name)
 
     # Extract team names (for matches)
     if "team1_name" in context and "team2_name" in context:

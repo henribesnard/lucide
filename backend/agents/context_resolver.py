@@ -304,14 +304,50 @@ class ContextResolver:
             options = data.get("response", []) if isinstance(data, dict) else []
             player_entry = options[0] if options else None
         elif player_name:
-            data = await self.api_client.get_players(search=player_name, season=season)
-            options = data.get("response", []) if isinstance(data, dict) else []
-            if team_id:
-                options = [p for p in options if self._player_has_team_id(p, team_id)]
-            elif team_name:
-                options = [p for p in options if self._player_has_team_name(p, team_name)]
+            # API requires league_id OR team_id when using search
+            # If we don't have either, first search profiles to get player_id
+            if not league_id and not team_id:
+                profiles = await self.api_client.get_player_profiles(search=player_name)
+                if profiles:
+                    # Pick the best match
+                    profile = self._pick_exact_match(
+                        profiles,
+                        player_name,
+                        lambda p: (p.get("player", {}) or {}).get("name")
+                    ) or profiles[0]
 
-            player_entry = self._pick_player_match(options, player_name)
+                    found_player_id = self._coerce_int(
+                        (profile.get("player", {}) or {}).get("id")
+                    )
+                    if found_player_id:
+                        # Now search with player_id instead
+                        data = await self.api_client.get_players(
+                            player_id=found_player_id,
+                            season=season
+                        )
+                        options = data.get("response", []) if isinstance(data, dict) else []
+                        player_entry = options[0] if options else None
+                    else:
+                        options = []
+                        player_entry = None
+                else:
+                    options = []
+                    player_entry = None
+            else:
+                # We have league_id or team_id, so we can search normally
+                data = await self.api_client.get_players(
+                    search=player_name,
+                    season=season,
+                    team_id=team_id,
+                    league_id=league_id
+                )
+                options = data.get("response", []) if isinstance(data, dict) else []
+                if team_id:
+                    options = [p for p in options if self._player_has_team_id(p, team_id)]
+                elif team_name:
+                    options = [p for p in options if self._player_has_team_name(p, team_name)]
+
+                player_entry = self._pick_player_match(options, player_name)
         else:
             return ContextResolution(
                 clarification_question=self._question(language, "player_missing")
@@ -495,13 +531,23 @@ class ContextResolver:
         league_id: Optional[int],
         season: Optional[int],
     ) -> Tuple[Optional[Dict[str, Any]], List[Dict[str, Any]]]:
-        teams = await self.api_client.get_teams(
-            search=team_name, league_id=league_id, season=season
-        )
-        if not teams:
-            teams = await self.api_client.get_teams(search=team_name)
+        # API does not allow league_id/season with search, so search first then filter
+        teams = await self.api_client.get_teams(search=team_name)
         if not teams:
             return None, []
+
+        # Filter by league_id if provided
+        if league_id:
+            filtered = [
+                t for t in teams
+                if (t.get("team", {}) or {}).get("id") and
+                   any(v.get("league", {}).get("id") == league_id
+                       for v in (t.get("venues", []) or []))
+            ]
+            # If filtering removes all results, keep original list
+            if filtered:
+                teams = filtered
+
         if len(teams) == 1:
             return teams[0], teams
         exact = self._pick_exact_match(teams, team_name, lambda t: (t.get("team", {}) or {}).get("name"))
