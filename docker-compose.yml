@@ -106,6 +106,35 @@ services:
     networks:
       - lucide_network
 
+  telegram_bot:
+    build:
+      context: .
+      dockerfile: backend/telegram/Dockerfile
+    container_name: lucide_telegram_bot
+    restart: unless-stopped
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      DATABASE_URL: postgresql://lucide_user:lucide_password@postgres:5432/lucide_db
+      REDIS_URL: redis://redis:6379
+      BACKEND_BASE_URL: http://backend:8000
+      TELEGRAM_WEBHOOK_URL: ${TELEGRAM_WEBHOOK_URL:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      FOOTBALL_API_KEY: ${FOOTBALL_API_KEY}
+      ENABLE_MULTI_LLM: true
+      SLOW_LLM_API_KEY: ${DEEPSEEK_API_KEY}
+      MEDIUM_LLM_API_KEY: ${FAST_LLM_API_KEY:-${OPENAI_API_KEY}}
+      FAST_LLM_API_KEY: ${FAST_LLM_API_KEY:-${OPENAI_API_KEY}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    networks:
+      - lucide_network
+
   nginx:
     image: nginx:alpine
     container_name: lucide_nginx
