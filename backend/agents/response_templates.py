@@ -54,17 +54,9 @@ def generate_standings_response(
             return "❌ Aucune donnée de classement disponible."
         return "❌ No standings data available."
 
-    # Get first standings group (usually the main league table)
-    # API structure: standings_data[0] is a league object with "standings" key
-    # which contains [[team1, team2, ...]] (nested arrays)
-    first_league = standings_data[0] if standings_data else {}
-    if isinstance(first_league, dict):
-        main_standings = first_league.get("standings", [[]])[0]
-    elif isinstance(first_league, list):
-        # Already the standings array
-        main_standings = first_league
-    else:
-        main_standings = []
+    # standings_data is already a list of teams (summarized format)
+    # Each item is: {"position": 1, "team": "Liverpool", "points": 50, ...}
+    main_standings = standings_data
 
     if not main_standings:
         if language == "fr":
@@ -79,15 +71,16 @@ def generate_standings_response(
         response += "-" * 75 + "\n"
 
         for team in main_standings[:10]:  # Top 10
-            rank = team.get("rank", "-")
-            team_name = team.get("team", {}).get("name", "Unknown")[:28]
+            # Summarized format: {"position": 1, "team": "Liverpool", "points": 50, ...}
+            rank = team.get("position", "-")
+            team_name = team.get("team", "Unknown")[:28]
             points = team.get("points", 0)
-            played = team.get("all", {}).get("played", 0)
-            wins = team.get("all", {}).get("win", 0)
-            draws = team.get("all", {}).get("draw", 0)
-            losses = team.get("all", {}).get("lose", 0)
-            goals_for = team.get("all", {}).get("goals", {}).get("for", 0)
-            goals_against = team.get("all", {}).get("goals", {}).get("against", 0)
+            played = team.get("played", 0)
+            wins = team.get("wins", 0)
+            draws = team.get("draws", 0)
+            losses = team.get("losses", 0)
+            goals_for = team.get("goals_for", 0)
+            goals_against = team.get("goals_against", 0)
 
             response += f"{rank:<4} {team_name:<30} {points:<5} {played:<4} {wins}-{draws}-{losses:<6} {goals_for}:{goals_against}\n"
 
@@ -99,15 +92,16 @@ def generate_standings_response(
         response += "-" * 75 + "\n"
 
         for team in main_standings[:10]:
-            rank = team.get("rank", "-")
-            team_name = team.get("team", {}).get("name", "Unknown")[:28]
+            # Summarized format: {"position": 1, "team": "Liverpool", "points": 50, ...}
+            rank = team.get("position", "-")
+            team_name = team.get("team", "Unknown")[:28]
             points = team.get("points", 0)
-            played = team.get("all", {}).get("played", 0)
-            wins = team.get("all", {}).get("win", 0)
-            draws = team.get("all", {}).get("draw", 0)
-            losses = team.get("all", {}).get("lose", 0)
-            goals_for = team.get("all", {}).get("goals", {}).get("for", 0)
-            goals_against = team.get("all", {}).get("goals", {}).get("against", 0)
+            played = team.get("played", 0)
+            wins = team.get("wins", 0)
+            draws = team.get("draws", 0)
+            losses = team.get("losses", 0)
+            goals_for = team.get("goals_for", 0)
+            goals_against = team.get("goals_against", 0)
 
             response += f"{rank:<4} {team_name:<30} {points:<5} {played:<4} {wins}-{draws}-{losses:<6} {goals_for}:{goals_against}\n"
 
