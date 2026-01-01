@@ -84,7 +84,16 @@
       "Bash(for file in can_analyses/2025-12-28_Group_Stage___2_*.md)",
       "Bash(flutter analyze:*)",
       "Bash(flutter clean:*)",
-      "Bash(flutter pub get:*)"
+      "Bash(flutter pub get:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ZGIzNDYwYS1hNmI1LTRkY2UtYTJmNC1hMTIwNThhZmUwYjMiLCJleHAiOjE3NjcyNjkyNTd9.VzQ5hvdiBeYRHHajtSoQLn69bdI7_QiJCikeKRNZiZ4\")",
+      "Bash(Select-String -Pattern \"season|Search|ERROR\" -Context 1,2)",
+      "Bash(powershell -ExecutionPolicy Bypass -File test_workflow.ps1)",
+      "Bash(docker cp:*)",
+      "Bash(Select-String -Pattern \"Test05|Test06|Liverpool|Haaland|ERROR|500|team_statistics|player_statistics\" -Context 0,2)",
+      "Bash(aws sts get-caller-identity:*)",
+      "Bash(aws ec2 describe-instances:*)",
+      "Bash(ssh:*)",
+      "Bash(scp:*)"
     ],
     "deny": [],
     "ask": []
