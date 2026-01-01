@@ -263,7 +263,10 @@ class FootballAPIClient:
             params["name"] = name
         if country:
             params["country"] = country
-        if season:
+        # API constraint: 'season' cannot be used with 'search'
+        if search:
+            params["search"] = search
+        elif season:
             params["season"] = season
         if team_id:
             params["team"] = team_id
@@ -273,8 +276,6 @@ class FootballAPIClient:
             params["type"] = type_
         if current is not None:
             params["current"] = "true" if current else "false"
-        if search:
-            params["search"] = search
         if last:
             params["last"] = last
 
@@ -317,7 +318,10 @@ class FootballAPIClient:
             params["name"] = name
         if league_id:
             params["league"] = league_id
-        if season:
+        # API constraint: 'season' cannot be used with 'search'
+        if search:
+            params["search"] = search
+        elif season:
             params["season"] = season
         if country:
             params["country"] = country
@@ -325,8 +329,6 @@ class FootballAPIClient:
             params["code"] = code
         if venue_id:
             params["venue"] = venue_id
-        if search:
-            params["search"] = search
 
         data = await self._make_request("teams", params)
         return data.get("response", [])

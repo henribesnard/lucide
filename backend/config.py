@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     ENABLE_PARALLEL_API_CALLS: bool = True
     MAX_PARALLEL_TOOL_CALLS: int = 5
     ENABLE_MULTI_LLM: bool = False
-    ENABLE_SMART_SKIP_ANALYSIS: bool = False
+    ENABLE_SMART_SKIP_ANALYSIS: bool = True
     ENABLE_CAUSAL_AI: bool = True
 
     # Match analysis storage

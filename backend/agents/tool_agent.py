@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import re
+import time
 from typing import List, Tuple, Optional, Dict, Any
 from datetime import datetime
 
@@ -11,6 +12,7 @@ from backend.llm.client import LLMClient
 from backend.prompts import TOOL_SYSTEM_PROMPT
 from backend.tools.football import TOOL_DEFINITIONS, execute_tool
 from backend.config import settings
+from backend.monitoring.autonomous_agents_metrics import Metrics
 
 logger = logging.getLogger(__name__)
 
@@ -769,6 +771,9 @@ class ToolAgent:
         default_season: Optional[int],
         semaphore: Optional[asyncio.Semaphore],
     ) -> Tuple[ToolCallResult, Dict[str, Any]]:
+        tool_name = tool_call.function.name
+        start_time = time.perf_counter()
+
         try:
             try:
                 arguments = json.loads(tool_call.function.arguments or "{}")
@@ -839,6 +844,13 @@ class ToolAgent:
                 result = await _run()
 
             error = result.get("error") if isinstance(result, dict) else None
+
+            # Track API call metrics
+            duration = time.perf_counter() - start_time
+            status = "error" if error else "success"
+            Metrics.api_calls_executed.labels(endpoint_name=tool_name, status=status).inc()
+            Metrics.api_call_duration.labels(endpoint_name=tool_name).observe(duration)
+
             tool_result = ToolCallResult(
                 name=tool_call.function.name,
                 arguments=arguments,
@@ -853,6 +865,13 @@ class ToolAgent:
             return tool_result, tool_message
         except Exception as exc:
             logger.error("Tool execution failed: %s", exc, exc_info=True)
+
+            # Track failure metrics
+            duration = time.perf_counter() - start_time
+            Metrics.api_calls_executed.labels(endpoint_name=tool_name, status="exception").inc()
+            Metrics.api_call_duration.labels(endpoint_name=tool_name).observe(duration)
+            Metrics.api_call_failures.labels(endpoint_name=tool_name, error_type=type(exc).__name__).inc()
+
             error_payload = {"error": str(exc)}
             tool_result = ToolCallResult(
                 name=getattr(tool_call.function, "name", "unknown"),
@@ -1148,6 +1167,10 @@ class ToolAgent:
                 )
 
                 if settings.ENABLE_PARALLEL_API_CALLS and len(msg.tool_calls) > 1:
+                    # Track parallel execution
+                    Metrics.parallel_execution_count.inc()
+                    Metrics.api_calls_in_plan.observe(len(msg.tool_calls))
+
                     semaphore = asyncio.Semaphore(max(1, settings.MAX_PARALLEL_TOOL_CALLS))
                     tasks = [
                         self._execute_tool_call(tool_call, default_season, semaphore)

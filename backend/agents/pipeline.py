@@ -14,6 +14,7 @@ from backend.api.football_api import FootballAPIClient
 from backend.config import settings
 from backend.llm.client import LLMClient
 from backend.core.data_collector import DataCollector
+from backend.monitoring.autonomous_agents_metrics import Metrics
 
 logger = logging.getLogger(__name__)
 
@@ -246,6 +247,10 @@ class LucidePipeline:
         intent_start = time.perf_counter()
         intent: IntentResult = await self.intent_agent.run(user_message, context=context)
         intent_latency = time.perf_counter() - intent_start
+        Metrics.component_duration.labels(component="intent").observe(intent_latency)
+
+        # Track pipeline request with detected intent
+        Metrics.pipeline_requests.labels(question_type=intent.intent).inc()
 
         # Step 1b: Context resolution (best-effort)
         resolved_context = context
@@ -334,6 +339,7 @@ class LucidePipeline:
                 context=context
             )
             tool_latency = time.perf_counter() - tool_start
+            Metrics.component_duration.labels(component="tools").observe(tool_latency)
         else:
             tool_latency = 0.0
         # Best-effort check for critical data in match analysis
@@ -362,6 +368,7 @@ class LucidePipeline:
             # Step 3: Causal analysis
             if status_callback:
                 status_callback("causal", "🧠 Analyse causale en cours...")
+            causal_start = time.perf_counter()
             try:
                 causal_result = await self.causal_agent.run(
                     question=user_message,
@@ -374,8 +381,11 @@ class LucidePipeline:
                 if causal_result:
                     causal_summary = causal_result.llm_analysis
                     causal_payload = causal_result.to_payload()
+                causal_latency = time.perf_counter() - causal_start
+                Metrics.component_duration.labels(component="causal").observe(causal_latency)
             except Exception as exc:
                 logger.warning("Causal analysis failed: %s", exc)
+                Metrics.pipeline_failure.labels(question_type=intent.intent, failure_stage="causal").inc()
 
         logger.info(f"Using model_type='{model_type}' for analysis and response")
 
@@ -393,6 +403,7 @@ class LucidePipeline:
                 context=context,
             )
             analysis_latency = time.perf_counter() - analysis_start
+            Metrics.component_duration.labels(component="analysis").observe(analysis_latency)
         else:
             analysis = AnalysisResult(
                 brief="Donnees recuperees directement depuis les tools.",
@@ -414,9 +425,16 @@ class LucidePipeline:
             analysis=analysis,
             context=context,
             language=language,
+            tool_results=tool_results,
         )
         response_latency = time.perf_counter() - response_start
+        Metrics.component_duration.labels(component="response").observe(response_latency)
+
         total_latency = time.perf_counter() - start_total
+
+        # Track pipeline success and duration
+        Metrics.pipeline_success.labels(question_type=intent.intent).inc()
+        Metrics.pipeline_duration.labels(question_type=intent.intent).observe(total_latency)
 
         logger.info(
             "pipeline_timing intent=%.2fs tools=%.2fs analysis=%.2fs response=%.2fs total=%.2fs",

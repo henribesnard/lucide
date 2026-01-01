@@ -58,31 +58,69 @@ def _extract_score_hint(tool_results: List[ToolCallResult]) -> Optional[Dict[str
     return None
 
 
-def _compact_output(output: Any) -> Any:
+def _compact_output(output: Any, tool_name: Optional[str] = None) -> Any:
     """
     Compacte les outputs pour réduire la taille, mais garde les données critiques intactes.
-    - Lineups: garde tous les joueurs (max 30) pour avoir les compos complètes
-    - Autres listes: limite à 5 éléments
+    Utilise une logique intelligente basée sur le type de données et l'intent.
+
+    Limits par type de données:
+    - Lineups: 30 joueurs (compos complètes)
+    - Events: 25 événements (match complet)
+    - H2H: 10 matchs (historique substantiel)
+    - Standings: 10 équipes (top + contexte)
+    - Top performers: 15 joueurs (large contexte)
+    - Fixtures: 10 matchs (contexte suffisant)
+    - Default: 5 éléments
     """
     if isinstance(output, list):
-        # Pour les lineups et données de joueurs, garder plus d'éléments
-        # Détecter si c'est une liste de joueurs (presence de 'player' ou 'name')
+        # Détecter le type de liste et appliquer la limite appropriée
         if output and isinstance(output[0], dict):
             first_item_keys = set(output[0].keys())
+
+            # Players/Lineups: garde 30 éléments
             if 'player' in first_item_keys or ('name' in first_item_keys and 'number' in first_item_keys):
-                # C'est probablement des joueurs, garder jusqu'à 30 éléments
                 return output[:30]
-        # Pour les autres listes, limite standard
+
+            # Events: garde 25 événements
+            if 'time' in first_item_keys and 'team' in first_item_keys and 'type' in first_item_keys:
+                return output[:25]
+
+            # Standings: garde 10 équipes
+            if 'rank' in first_item_keys and 'points' in first_item_keys:
+                return output[:10]
+
+            # Top performers (scorers, assists): garde 15
+            if tool_name in ('top_scorers', 'top_assists', 'top_yellow_cards', 'top_red_cards'):
+                return output[:15]
+
+            # H2H fixtures: garde 10 matchs
+            if 'fixture' in first_item_keys and 'teams' in first_item_keys:
+                return output[:10]
+
+        # Default: limite à 5
         return output[:5]
+
     if isinstance(output, dict):
         compacted: Dict[str, Any] = {}
         for key, value in output.items():
             if isinstance(value, list):
-                # Même logique pour les listes imbriquées
+                # Appliquer la même logique aux listes imbriquées
                 if value and isinstance(value[0], dict):
                     first_item_keys = set(value[0].keys())
+
+                    # Players/Lineups
                     if 'player' in first_item_keys or ('name' in first_item_keys and 'number' in first_item_keys):
                         compacted[key] = value[:30]
+                    # Events
+                    elif 'time' in first_item_keys and 'team' in first_item_keys and 'type' in first_item_keys:
+                        compacted[key] = value[:25]
+                    # Standings
+                    elif 'rank' in first_item_keys and 'points' in first_item_keys:
+                        compacted[key] = value[:10]
+                    # Fixtures/H2H
+                    elif 'fixture' in first_item_keys and 'teams' in first_item_keys:
+                        compacted[key] = value[:10]
+                    # Default
                     else:
                         compacted[key] = value[:5]
                 else:
@@ -139,7 +177,7 @@ class AnalysisAgent:
             {
                 "tool": tr.name,
                 "arguments": tr.arguments,
-                "output": _compact_output(tr.output),
+                "output": _compact_output(tr.output, tr.name),
                 "error": tr.error,
             }
             for tr in tool_results

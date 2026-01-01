@@ -1,12 +1,13 @@
 import json
 import logging
 import re
-from typing import Dict, Optional, Any, Literal
+from typing import Dict, Optional, Any, Literal, List
 
-from backend.agents.types import AnalysisResult, IntentResult
+from backend.agents.types import AnalysisResult, IntentResult, ToolCallResult
 from backend.llm.client import LLMClient
 from backend.prompts import ANSWER_SYSTEM_PROMPT
 from backend.prompts_i18n import get_response_prompt
+from backend.agents.response_templates import can_use_template, generate_template_response
 
 logger = logging.getLogger(__name__)
 Language = Literal["fr", "en"]
@@ -37,7 +38,15 @@ class ResponseAgent:
         analysis: AnalysisResult,
         context: Optional[Dict[str, Any]] = None,
         language: Language = "fr",
+        tool_results: Optional[List[ToolCallResult]] = None,
     ) -> str:
+        # Try to use template-based response for simple intents
+        if tool_results and can_use_template(intent, context):
+            template_response = generate_template_response(intent, tool_results, analysis, language)
+            if template_response:
+                logger.info(f"Using template-based response for intent: {intent.intent}")
+                return template_response
+
         season_hint = _extract_season_hint(analysis.data_points)
 
         # Format context for prompt
