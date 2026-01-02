@@ -125,16 +125,17 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         formatter = MessageFormatter()
         formatted_response = formatter.format_for_telegram(
             response_text,
-            max_length=4096,  # Telegram's limit
+            max_length=0,  # Let the splitter handle length
         )
 
         # Send response (split if too long)
         response_messages = formatter.split_long_message(formatted_response)
 
         for i, msg_part in enumerate(response_messages):
+            safe_part = formatter.escape_markdown_v2(msg_part)
             await update.message.reply_text(
-                msg_part,
-                parse_mode=ParseMode.MARKDOWN,
+                safe_part,
+                parse_mode=ParseMode.MARKDOWN_V2,
             )
 
             # Small delay between parts
@@ -160,9 +161,8 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     except Exception as e:
         logger.error(f"Error handling message: {e}", exc_info=True)
         await update.message.reply_text(
-            "❌ **An error occurred while processing your message.**\n\n"
+            "❌ An error occurred while processing your message.\n\n"
             "Please try again or contact support if the issue persists.",
-            parse_mode=ParseMode.MARKDOWN,
         )
 
     finally:
@@ -229,13 +229,16 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
 
         # Format and send response
         formatter = MessageFormatter()
-        formatted_response = formatter.format_for_telegram(response_text)
+        formatted_response = formatter.format_for_telegram(response_text, max_length=0)
+        response_messages = formatter.split_long_message(formatted_response)
 
         # Reply in thread
-        await update.message.reply_text(
-            formatted_response,
-            parse_mode=ParseMode.MARKDOWN,
-        )
+        for msg_part in response_messages:
+            safe_part = formatter.escape_markdown_v2(msg_part)
+            await update.message.reply_text(
+                safe_part,
+                parse_mode=ParseMode.MARKDOWN_V2,
+            )
 
         logger.info(f"Group response sent to chat {update.effective_chat.id}")
 
@@ -243,7 +246,6 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
         logger.error(f"Error handling group message: {e}", exc_info=True)
         await update.message.reply_text(
             "❌ An error occurred. Please try again.",
-            parse_mode=ParseMode.MARKDOWN,
         )
 
     finally:

@@ -29,7 +29,7 @@ class MessageFormatter:
             return ""
 
         # Truncate if too long
-        if len(text) > max_length:
+        if max_length and max_length > 0 and len(text) > max_length:
             text = text[: max_length - 3] + "..."
 
         return text
