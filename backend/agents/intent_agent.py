@@ -80,6 +80,53 @@ class IntentAgent:
             if intent == "match_analysis":
                 intent = "analyse_rencontre"
             needs_data = bool(payload.get("needs_data", True))
+            data_required_intents = {
+                "analyse_rencontre",
+                "score_live",
+                "stats_live",
+                "events_live",
+                "players_live",
+                "lineups_live",
+                "result_final",
+                "stats_final",
+                "events_summary",
+                "players_performance",
+                "prediction_global",
+                "form_analysis",
+                "h2h_analysis",
+                "stats_comparison",
+                "injuries_impact",
+                "probable_lineups",
+                "odds_analysis",
+                "standings",
+                "classement_ligue",
+                "top_performers",
+                "top_scorers",
+                "top_assists",
+                "top_cartons",
+                "top_yellow_cards",
+                "top_red_cards",
+                "team_stats",
+                "next_fixtures",
+                "results",
+                "calendrier_matchs",
+                "calendrier_ligue_saison",
+                "calendrier_equipe",
+                "matchs_live_filtre",
+                "prochains_ou_derniers_matchs",
+                "detail_fixture",
+                "chronologie_match",
+                "compositions_match",
+                "stats_equipes_match",
+                "stats_joueurs_match",
+                "journees_competition",
+                "stats_equipe_saison",
+                "stats_joueur",
+            }
+            if intent in data_required_intents:
+                needs_data = True
+            if intent == "info_generale":
+                needs_data = False
             entities = payload.get("entities") or {}
             confidence = float(payload.get("confidence", 0.0))
             reasoning = str(payload.get("reasoning") or "").strip()
