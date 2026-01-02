@@ -95,6 +95,19 @@ services:
       - BACKEND_BASE_URL=http://backend:8000
       - TELEGRAM_WEBHOOK_URL=${TELEGRAM_WEBHOOK_URL:-}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LLM_PROVIDER=deepseek
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - ENABLE_MULTI_LLM=${ENABLE_MULTI_LLM:-false}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SLOW_LLM_PROVIDER=deepseek
+      - SLOW_LLM_MODEL=deepseek-chat
+      - SLOW_LLM_API_KEY=${SLOW_LLM_API_KEY}
+      - MEDIUM_LLM_PROVIDER=openai
+      - MEDIUM_LLM_MODEL=gpt-4o-mini
+      - MEDIUM_LLM_API_KEY=${MEDIUM_LLM_API_KEY}
+      - FAST_LLM_PROVIDER=openai
+      - FAST_LLM_MODEL=gpt-4o
+      - FAST_LLM_API_KEY=${FAST_LLM_API_KEY}
     depends_on:
       - postgres
       - redis
