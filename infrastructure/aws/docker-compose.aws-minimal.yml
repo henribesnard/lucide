@@ -93,6 +93,7 @@ services:
       - DATABASE_URL=postgresql://lucide_user:${DB_PASSWORD:-changeme_in_production}@postgres:5432/lucide
       - REDIS_URL=redis://redis:6379
       - BACKEND_BASE_URL=http://backend:8000
+      - FOOTBALL_API_KEY=${FOOTBALL_API_KEY}
       - TELEGRAM_WEBHOOK_URL=${TELEGRAM_WEBHOOK_URL:-}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LLM_PROVIDER=deepseek
